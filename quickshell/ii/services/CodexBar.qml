@@ -1,22 +1,28 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 
-/*
- * CodexBar — Usage monitor for Codex/OpenAI.
- *
- * Runs a configurable command (via Config.options.codexbar.queryCommand)
- * to fetch usage data and exposes reactive properties for the UI.
- *
- * Default: disabled (queryCommand = ""). Enable by setting the command
- * in your local config.json — for example:
- *   "codexbar": {
- *     "queryCommand": "distrobox enter dev-container -- codexbar usage --provider codex --format json --status",
- *     "updateInterval": 60000
- *   }
- *
- * Only refreshes while popupOpen is true (configurable interval).
- * Caches last valid result on error; never blocks the UI.
- */
+ /*
+  * CodexBar — Usage monitor for Codex/OpenAI.
+  *
+  * Runs a configurable command (via Config.options.codexbar.queryCommand)
+  * to fetch usage data and exposes reactive properties for the UI.
+  *
+  * Default: disabled (queryCommand = ""). Enable by setting the command
+  * in your local config.json — for example:
+  *   "codexbar": {
+  *     "queryCommand": "<your fetch command>",
+  *     "containerName": "<optional container name for liveness check>",
+  *     "updateInterval": 60000
+  *   }
+  *
+  * Polling modes (either triggers the Timer):
+  *   - popupOpen: popup is open (refresh while user is reading)
+  *   - pollingActive: container detected up via external trigger (Win+U)
+  *
+  * Each fetch pre-checks the container via `distrobox list` (cheap, no spawn).
+  * If container is down, stops polling and keeps last valid data displayed.
+  * Caches last valid result on error; never blocks the UI.
+  */
 
 import qs.modules.common
 import QtQuick
@@ -30,9 +36,13 @@ Singleton {
     property string queryCommand: Config.ready ? Config.options.codexbar.queryCommand ?? "" : ""
     property bool enabled: Config.ready && queryCommand.length > 0
     property int updateInterval: Config.ready ? Config.options.codexbar.updateInterval ?? 60000 : 60000
+    property string containerName: Config.ready ? (Config.options.codexbar.containerName ?? "") : ""
 
-    // --- UI controls (set by CodexBarWidget) ---
+    // --- UI controls (set by CodexBarWidget/popup) ---
     property bool popupOpen: false
+
+    // --- External polling control (set by GlobalShortcut / startPolling) ---
+    property bool pollingActive: false
 
     // --- Weekly (secondary tier) ---
     property real weeklyRemainingPercent: -1
@@ -100,12 +110,61 @@ Singleton {
     Timer {
         id: updateTimer
         interval: root.updateInterval
-        running: root.enabled && root.popupOpen
+        running: root.enabled && (root.popupOpen || root.pollingActive)
         repeat: true
         onTriggered: root.fetch()
     }
 
+    // Cheap container state check via `distrobox list` (does not spawn container).
+    // Only used when containerName is configured; otherwise fetch runs directly.
+    Process {
+        id: containerCheckProcess
+        command: ["bash", "-c", "distrobox list --no-header --name 2>/dev/null | grep -c '" + root.containerName + "' || true"]
+        stdout: StdioCollector {
+            id: containerCheckOutput
+            onStreamFinished: {
+                var text = containerCheckOutput.text.trim()
+                var running = parseInt(text, 10) > 0
+                if (running) {
+                    root._doFetch()
+                } else if (root.pollingActive) {
+                    // Container went down — stop polling, keep last valid data
+                    root.pollingActive = false
+                    updateTimer.restart()
+                } else {
+                    // Popup/manual fetch while container down — show error, do NOT spawn
+                    root.hasError = true
+                    root._lastError = "container offline"
+                    root.loading = false
+                }
+            }
+        }
+    }
+
+    function startPolling() {
+        if (!root.enabled) return
+        root.pollingActive = true
+        root.fetch()
+        updateTimer.restart()
+    }
+
+    function stopPolling() {
+        root.pollingActive = false
+        updateTimer.restart()
+    }
+
     function fetch() {
+        if (!root.enabled || root.loading) return
+        // Pre-check container liveness when a containerName is configured.
+        // Cheap `distrobox list` (does not spawn). Without containerName, fetch directly.
+        if (root.containerName.length > 0) {
+            containerCheckProcess.running = true
+        } else {
+            root._doFetch()
+        }
+    }
+
+    function _doFetch() {
         if (!root.enabled || root.loading) return
         root.loading = true
         fetchProcess.running = true

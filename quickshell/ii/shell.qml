@@ -73,5 +73,14 @@ ShellRoot {
 
         onPressed: root.cyclePanelFamily()
     }
+
+    // External trigger to start CodexBar polling (e.g. bound to the same
+    // key as the container terminal so polling starts when user enters it).
+    GlobalShortcut {
+        name: "codexStartPolling"
+        description: "Starts CodexBar background polling"
+
+        onPressed: CodexBar.startPolling()
+    }
 }
 
