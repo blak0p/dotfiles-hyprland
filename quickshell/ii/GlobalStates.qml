@@ -49,6 +49,6 @@ Singleton {
         }
     }
 
-    // CodexBar-related shortcuts and state are not shipped with this
-    // public repo. If your local Quickshell setup provides a CodexBar
-    // custom layer, add the matching GlobalShortcut / property here.
+    // Some shortcuts/state from the upstream are not shipped with this
+    // public repo. If your local Quickshell setup provides a custom
+    // layer, add the matching GlobalShortcut / property here.

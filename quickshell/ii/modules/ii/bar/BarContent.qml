@@ -329,11 +329,11 @@ Item { // Bar content region
                 Layout.fillHeight: true
             }
 
-            // CodexBarWidget — not in this public repo. If your local
-            // Quickshell setup provides a CodexBarWidget, uncomment the
-            // block below.
-            // CodexBarWidget {
-            //     visible: (GlobalStates.codexbarOpen || CodexBar.containerRunning) && root.useShortenedForm < 2
+            // Optional custom widget — not in this public repo.
+            // If your local Quickshell setup provides one, uncomment
+            // the block below and adjust the visibility expression.
+            // CustomWidget {
+            //     visible: SOMETHING
             //     Layout.leftMargin: 4
             //     Layout.alignment: Qt.AlignVCenter
             // }
