@@ -46,7 +46,7 @@ hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%-"),
     { locked = true, repeating = true })
 
-hl.bind("CTRL + SUPER + T", hl.dsp.exec_cmd("setsid --fork /usr/bin/python3 $HOME/wallfliper/main.py >/dev/null 2>&1"),
+hl.bind("CTRL + SUPER + T", hl.dsp.exec_cmd("setsid --fork /usr/bin/python3 $HOME/.config/hypr/wallfliper/main.py >/dev/null 2>&1"),
     { description = "Shell: Change wallpaper (wallfliper)" })
 hl.bind("CTRL + SUPER + ALT + T", hl.dsp.global("quickshell:wallpaperSelectorRandom"),
     { description = "Shell: Random wallpaper" })
