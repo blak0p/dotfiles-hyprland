@@ -115,8 +115,6 @@ The full keybind list lives in `hypr/hyprland/keybinds.lua` and `hypr/custom/key
 |---|---|
 | `SUPER + Return` | Open terminal (kitty) |
 | `SUPER + Space` | Open app launcher (fuzzel) |
-| `SUPER + U` | Open dev container (kitty + distrobox-enter) |
-| `SUPER + SHIFT + U` | Toggle CodexBar usage popup |
 | `SUPER + C` | Close window |
 | `SUPER + F` | Toggle fullscreen |
 | `SUPER + H` / `SUPER + L` | Focus left / right monitor |

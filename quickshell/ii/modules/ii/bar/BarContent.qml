@@ -329,11 +329,14 @@ Item { // Bar content region
                 Layout.fillHeight: true
             }
 
-            CodexBarWidget {
-                visible: (GlobalStates.codexbarOpen || CodexBar.containerRunning) && root.useShortenedForm < 2
-                Layout.leftMargin: 4
-                Layout.alignment: Qt.AlignVCenter
-            }
+            // CodexBarWidget — not in this public repo. If your local
+            // Quickshell setup provides a CodexBarWidget, uncomment the
+            // block below.
+            // CodexBarWidget {
+            //     visible: (GlobalStates.codexbarOpen || CodexBar.containerRunning) && root.useShortenedForm < 2
+            //     Layout.leftMargin: 4
+            //     Layout.alignment: Qt.AlignVCenter
+            // }
 
             // Weather
             Loader {

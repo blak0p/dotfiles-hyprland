@@ -30,7 +30,6 @@ Singleton {
     property bool superReleaseMightTrigger: true
     property bool wallpaperSelectorOpen: false
     property bool workspaceShowNumbers: false
-    property bool codexbarOpen: false
     onSidebarRightOpenChanged: {
         if (GlobalStates.sidebarRightOpen) {
             Notifications.timeoutAll();
@@ -50,22 +49,6 @@ Singleton {
         }
     }
 
-    GlobalShortcut {
-        name: "codexbarToggle"
-        description: "Toggle CodexBar widget"
-
-        onPressed: {
-            root.codexbarOpen = !root.codexbarOpen
-        }
-    }
-
-    GlobalShortcut {
-        name: "codexbarRefresh"
-        description: "Show CodexBar widget and refresh data"
-
-        onPressed: {
-            root.codexbarOpen = true
-            CodexBar.refresh()
-        }
-    }
-}
+    // CodexBar-related shortcuts and state are not shipped with this
+    // public repo. If your local Quickshell setup provides a CodexBar
+    // custom layer, add the matching GlobalShortcut / property here.

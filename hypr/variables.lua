@@ -69,7 +69,6 @@ return {
     -- Window Group
     kbWindowGroupCycleNext     = "ALT + TAB",
     kbWindowGroupCyclePrev     = "SHIFT + ALT + TAB",
-    kbUngroup                  = "SUPER + U",
     kbToggleGroup              = "SUPER + Comma",
 
     -- Window Action
