@@ -64,10 +64,3 @@ for i = 1, 10 do
         hl.dispatch(hl.dsp.window.move({ workspace = i, follow = false }))
     end)
 end
-
--- Carga de binds extra locales (~/.config/hypr/custom/keybinds-extra.lua)
--- Si existe el archivo, se carga. Permite agregar binds personales sin tocar el repo.
-local extra = HOME .. "/.config/hypr/custom/keybinds-extra.lua"
-if is_file_exists(extra) then
-    dofile(extra)
-end
