@@ -1,0 +1,29 @@
+# Packages for the Hyprland desktop stack.
+# One package per line. Comments with #. Blank lines OK.
+# Consume with: pacman -S --needed - < deps/packages.txt
+
+hyprland
+waybar
+quickshell
+fuzzel
+hyprlock
+hypridle
+xdg-desktop-portal-hyprland
+xsettingsd
+gvfs
+polkit-gnome
+btop
+cava
+
+# GTK theming
+gtk3
+gtk4
+
+# Common deps
+grim
+slurp
+wl-clipboard
+brightnessctl
+playerctl
+network-manager-applet
+blueman
