@@ -1,0 +1,30 @@
+# Packages for the Hyprland desktop stack on Debian/Ubuntu.
+# Consume with: xargs -a deps/packages.apt.txt sudo apt install -y
+
+hyprland
+waybar
+quickshell
+fuzzel
+hyprlock
+hypridle
+xdg-desktop-portal-hyprland
+xsettingsd
+gvfs
+polkit-gnome
+btop
+cava
+grim
+slurp
+wl-clipboard
+brightnessctl
+playerctl
+network-manager-gnome
+blueman
+
+# Notes:
+# - quickshell may not be in Debian/Ubuntu official repos. Check
+#   https://github.com/quickshell-mirror/quickshell for install options.
+# - hyprland is in Debian 13+ and Ubuntu 25.04+ repos. Older versions
+#   need an external PPA or building from source.
+# - We use network-manager-gnome (no gtk-3/gtk-4 in the list because
+#   network-manager-gnome already pulls GTK as a dependency).

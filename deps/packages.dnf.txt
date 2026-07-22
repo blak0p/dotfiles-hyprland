@@ -1,0 +1,24 @@
+# Packages for the Hyprland desktop stack on Fedora.
+# Consume with: xargs -a deps/packages.dnf.txt sudo dnf install -y
+
+hyprland
+waybar
+quickshell
+fuzzel
+hyprlock
+hypridle
+xdg-desktop-portal-hyprland
+xsettingsd
+gvfs
+polkit-gnome
+btop
+cava
+gtk3
+gtk4
+grim
+slurp
+wl-clipboard
+brightnessctl
+playerctl
+NetworkManager-tui
+blueman
