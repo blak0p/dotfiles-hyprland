@@ -1,0 +1,4 @@
+# herdr runtime artifacts
+*.sock
+*.log
+session.json
