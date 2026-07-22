@@ -12,6 +12,7 @@ Part of the [dotfiles umbrella](https://github.com/blak0p/dotfiles).
 - [Uninstall / rollback](#uninstall--rollback)
 - [Keybindings (cheat sheet)](#keybindings-cheat-sheet)
 - [Customize](#customize)
+- [Optional: CodexBar usage widget](#optional-codexbar-usage-widget)
 - [Troubleshooting](#troubleshooting)
 - [Dependencies](#dependencies)
 
@@ -164,6 +165,33 @@ hyprctl reload
 ```
 
 For Quickshell, use the keybind (`CTRL + SUPER + R`) — it kills and restarts.
+
+## Optional: CodexBar usage widget
+
+The bar includes a Codex/OpenAI usage indicator (`codex 88% · 5d 11h`) that is **disabled by default**. It shows your weekly usage remaining, reset countdown, session info, OpenAI status, and reset credits in a popup.
+
+To enable it, add a `codexbar` section to your local Quickshell config file:
+
+```json
+// ~/.config/illogical-impulse/config.json
+{
+  "codexbar": {
+    "queryCommand": "codexbar usage --provider codex --format json --status",
+    "updateInterval": 60000
+  }
+}
+```
+
+- `queryCommand` — shell command that returns the usage JSON. Any command works: a local binary, `distrobox enter <container> -- codexbar ...`, an SSH call, etc. Empty string (default) hides the widget.
+- `updateInterval` — refresh interval in milliseconds while the popup is open (default `60000`).
+
+Example with a distrobox container:
+
+```json
+"queryCommand": "distrobox enter dev-container -- codexbar usage --provider codex --format json --status"
+```
+
+After editing the config, restart Quickshell (`CTRL + SUPER + R`). The widget appears on the right side of the bar; click it for the full popup.
 
 ## Troubleshooting
 
