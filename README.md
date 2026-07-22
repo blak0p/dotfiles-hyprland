@@ -115,8 +115,6 @@ The full keybind list lives in `hypr/hyprland/keybinds.lua` and `hypr/custom/key
 |---|---|
 | `SUPER + Return` | Open terminal (kitty) |
 | `SUPER + Space` | Open app launcher (fuzzel) |
-| `SUPER + B` | Toggle Steam (auto-picture-mode script) — wire to your own `$HOME/scripts/steam_toggle.sh` |
-| `SUPER + S` | Toggle audio output (script) — wire to your own `$HOME/scripts/cambiar_audio.sh` |
 | `SUPER + U` | Open dev container (kitty + distrobox-enter) |
 | `SUPER + SHIFT + U` | Toggle CodexBar usage popup |
 | `SUPER + C` | Close window |
@@ -210,9 +208,9 @@ ls -la ~/.config/hypr/wallfliper/main.py
 
 Check dependencies: `python3` must be on `$PATH` and the wallfliper venv (if used) must be set up. See `hypr/wallfliper/README.md`.
 
-### Audio / mic toggle keybind (`SUPER + S`) fails
+### Custom-layer keybinds fail
 
-This keybind runs `$HOME/scripts/cambiar_audio.sh` (or `cambiar_micro.sh` for the mic variant). The keybind is registered in a custom layer that this public repo does not ship — you need to provide your own `~/.config/hypr/custom/keybinds.lua` that wires these combos to scripts you control. See [Customize](#customize) for how the custom layer works.
+The end-4 keybinds work out of the box (this repo). Personal shortcuts like the audio toggle, Steam auto-picture, etc. live in a `custom/keybinds.lua` layer that this public repo does not ship — you need to provide your own `~/.config/hypr/custom/keybinds.lua` that wires those combos to scripts you control. See [Customize](#customize) for how the custom layer works.
 
 ### Quickshell bar disappeared
 
