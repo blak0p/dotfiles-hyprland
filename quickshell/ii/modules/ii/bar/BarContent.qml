@@ -329,10 +329,10 @@ Item { // Bar content region
                 Layout.fillHeight: true
             }
 
-            // Usage indicator widget bound to the public UsageTracker service.
-            // The service ships with default empty values; the bar will
-            // show a placeholder until a data source is configured.
-            UsageTrackerWidget {
+            // CodexBar — usage monitor for Codex/OpenAI.
+            // Invisible by default; enable by setting
+            // Config.options.codexbar.queryCommand in your local config.
+            CodexBarWidget {
                 visible: root.useShortenedForm < 2
                 Layout.leftMargin: 4
                 Layout.alignment: Qt.AlignVCenter

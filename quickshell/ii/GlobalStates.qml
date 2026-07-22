@@ -1,3 +1,5 @@
+// GlobalStates.qml — Global UI state singleton for the ii panel family.
+
 import qs.modules.common
 import qs.services
 import QtQuick
@@ -48,7 +50,4 @@ Singleton {
             root.superDown = false
         }
     }
-
-    // Some shortcuts/state from the upstream are not shipped with this
-    // public repo. If your local Quickshell setup provides a custom
-    // layer, add the matching GlobalShortcut / property here.
+}

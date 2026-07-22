@@ -632,6 +632,19 @@ Singleton {
                     property bool force2CharDayOfWeek: true
                 }
             }
+
+            property JsonObject codexbar: JsonObject {
+                // Command to fetch Codex/OpenAI usage data.
+                // Set this in your local config.json (e.g. ~/.config/quickshell/ii/config.json).
+                // Examples:
+                //   "distrobox enter dev -- codexbar usage --provider codex --format json"
+                //   "/path/to/codexbar usage --provider codex --format json"
+                // Empty string (default) = widget hidden, service inactive.
+                property string queryCommand: ""
+
+                // Auto-refresh interval in milliseconds while the popup is open.
+                property int updateInterval: 60000
+            }
         }
     }
 }
