@@ -9,7 +9,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string containerName: "bunker"
+    readonly property string containerName: "dev-container"
     readonly property int updateInterval: 60000
 
     property bool popupOpen: false

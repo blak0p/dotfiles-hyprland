@@ -13,7 +13,7 @@ hl.bind("SUPER + S", hl.dsp.exec_cmd("$HOME/scripts/cambiar_audio.sh"), { descri
 hl.bind(
 	"SUPER + U",
 	function()
-		hl.dispatch(hl.dsp.exec_cmd('/usr/bin/kitty -e /usr/bin/distrobox-enter --name bunker -- fish -C "cd $HOME/dev"'))
+		hl.dispatch(hl.dsp.exec_cmd('/usr/bin/kitty -e /usr/bin/distrobox-enter --name dev-container -- fish -C "cd $HOME/dev"'))
 	end,
 	{ description = "App: Distrobox dev" }
 )
