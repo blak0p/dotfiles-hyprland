@@ -1,1 +1,0 @@
-/home/alejndro/dev/dotfiles-bunker/custom/quickshell/modules/ii/bar/UsageTrackerWidget.qml
