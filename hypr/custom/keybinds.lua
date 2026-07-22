@@ -1,0 +1,1 @@
+/home/alejndro/dev/dotfiles-bunker/custom/hyprland/keybinds.lua

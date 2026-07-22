@@ -16,6 +16,7 @@ import qs.services
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Wayland
 
 MouseArea {
     id: root
@@ -37,40 +38,60 @@ MouseArea {
         }
     }
 
-    Popup {
-        id: popup
+    PanelWindow {
+        id: popupWindow
         visible: root._open
+        color: "transparent"
         width: 280
         height: 200
-        x: -popup.width / 2 + root.width / 2
-        y: root.height
 
-        Column {
+        anchors.top: Config.options.bar.vertical ? undefined : root.QsWindow?.window?.top
+        anchors.left: Config.options.bar.vertical ? root.QsWindow?.window?.left : undefined
+
+        WlrLayershell.namespace: "quickshell:popup"
+        WlrLayershell.layer: WlrLayer.Overlay
+        exclusionMode: ExclusionMode.Ignore
+        exclusiveZone: 0
+
+        Rectangle {
             anchors.fill: parent
-            anchors.margins: 12
-            spacing: 6
+            anchors.margins: 10
+            color: Appearance.m3colors.m3surfaceContainer
+            radius: Appearance.rounding.small
+            border.width: 1
+            border.color: Appearance.colors.colLayer0Border
 
-            Text {
-                text: "Usage"
-                font.bold: true
-            }
+            Column {
+                anchors.fill: parent
+                anchors.margins: 12
+                spacing: 6
 
-            Text {
-                text: "Weekly: " + (UsageTracker.weeklyRemainingPercent >= 0
-                    ? Math.round(UsageTracker.weeklyRemainingPercent) + "%"
-                    : "—")
-            }
+                Text {
+                    text: "Usage"
+                    font.bold: true
+                    color: Appearance.colors.colOnSurface
+                }
 
-            Text {
-                text: "Resets: " + (UsageTracker.weeklyResetDescription.length > 0
-                    ? UsageTracker.weeklyResetDescription
-                    : "—")
-            }
+                Text {
+                    text: "Weekly: " + (UsageTracker.weeklyRemainingPercent >= 0
+                        ? Math.round(UsageTracker.weeklyRemainingPercent) + "%"
+                        : "—")
+                    color: Appearance.colors.colOnSurface
+                }
 
-            Text {
-                text: "Last update: " + (UsageTracker.lastUpdatedText.length > 0
-                    ? UsageTracker.lastUpdatedText
-                    : "—")
+                Text {
+                    text: "Resets: " + (UsageTracker.weeklyResetDescription.length > 0
+                        ? UsageTracker.weeklyResetDescription
+                        : "—")
+                    color: Appearance.colors.colOnSurface
+                }
+
+                Text {
+                    text: "Last update: " + (UsageTracker.lastUpdatedText.length > 0
+                        ? UsageTracker.lastUpdatedText
+                        : "—")
+                    color: Appearance.colors.colOnSurface
+                }
             }
         }
     }
