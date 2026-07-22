@@ -6,7 +6,7 @@ return {
     ------------------
 
     -- Apps
-    terminal                   = "ghostty",
+    terminal                   = "kitty",
     browser                    = "zen-browser",
     editor                     = "nvim",
     fileExplorer               = "thunar",
