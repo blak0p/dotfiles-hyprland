@@ -329,14 +329,14 @@ Item { // Bar content region
                 Layout.fillHeight: true
             }
 
-            // Optional custom widget — not in this public repo.
-            // If your local Quickshell setup provides one, uncomment
-            // the block below and adjust the visibility expression.
-            // CustomWidget {
-            //     visible: SOMETHING
-            //     Layout.leftMargin: 4
-            //     Layout.alignment: Qt.AlignVCenter
-            // }
+            // Usage indicator widget bound to the public UsageTracker service.
+            // The service ships with default empty values; the bar will
+            // show a placeholder until a data source is configured.
+            UsageTrackerWidget {
+                visible: root.useShortenedForm < 2
+                Layout.leftMargin: 4
+                Layout.alignment: Qt.AlignVCenter
+            }
 
             // Weather
             Loader {
