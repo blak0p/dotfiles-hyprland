@@ -115,8 +115,8 @@ The full keybind list lives in `hypr/hyprland/keybinds.lua` and `hypr/custom/key
 |---|---|
 | `SUPER + Return` | Open terminal (kitty) |
 | `SUPER + Space` | Open app launcher (fuzzel) |
-| `SUPER + B` | Toggle Steam (auto-picture-mode script) |
-| `SUPER + S` | Toggle audio output (`scripts/cambiar_audio.sh`) |
+| `SUPER + B` | Toggle Steam (auto-picture-mode script) — wire to your own `$HOME/scripts/steam_toggle.sh` |
+| `SUPER + S` | Toggle audio output (script) — wire to your own `$HOME/scripts/cambiar_audio.sh` |
 | `SUPER + U` | Open dev container (kitty + distrobox-enter) |
 | `SUPER + SHIFT + U` | Toggle CodexBar usage popup |
 | `SUPER + C` | Close window |
@@ -212,7 +212,7 @@ Check dependencies: `python3` must be on `$PATH` and the wallfliper venv (if use
 
 ### Audio / mic toggle keybind (`SUPER + S`) fails
 
-`scripts/cambiar_audio.sh` lives in the **private** `dotfiles-bunker` repo. If you don't have that repo cloned, that keybind won't work. Either clone `dotfiles-bunker` separately, or change the keybind to point to your own script.
+This keybind runs `$HOME/scripts/cambiar_audio.sh` (or `cambiar_micro.sh` for the mic variant). The keybind is registered in a custom layer that this public repo does not ship — you need to provide your own `~/.config/hypr/custom/keybinds.lua` that wires these combos to scripts you control. See [Customize](#customize) for how the custom layer works.
 
 ### Quickshell bar disappeared
 
@@ -245,7 +245,6 @@ Notable packages:
 
 - Umbrella: https://github.com/blak0p/dotfiles
 - Other sub-repos: `dotfiles-shell`, `dotfiles-editors`
-- Private companion: `dotfiles-bunker` (host-specific scripts, modules, doctor.sh)
 
 ## License
 
