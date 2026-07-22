@@ -1,4 +1,4 @@
 # herdr runtime artifacts
 *.sock
 *.log
-session.json
+session.json.atl/
