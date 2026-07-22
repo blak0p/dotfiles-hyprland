@@ -1,4 +1,5 @@
-// UsageTrackerWidget.qml — Public bar widget that displays code-style usage data.
+// UsageTrackerWidget.qml — Public bar widget that displays usage data
+// from the UsageTracker service.
 //
 // This is the GENERIC, brand-free version. It renders whatever the
 // public UsageTracker service exposes: compact text in the bar, a popup

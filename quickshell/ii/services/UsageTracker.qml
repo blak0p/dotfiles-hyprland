@@ -1,4 +1,4 @@
-// UsageTracker.qml — Public interface for a code-usage tracking service.
+// UsageTracker.qml — Public interface for a usage tracking service.
 //
 // This file is shipped with dotfiles-hyprland. It provides the SHAPE
 // of the service: properties, signals, and a public function
