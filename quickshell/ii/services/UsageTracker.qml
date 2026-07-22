@@ -5,13 +5,14 @@
 // `refresh()` that consumers (e.g. BarContent.qml) can read from.
 //
 // The IMPLEMENTATION is not in this public repo. The public version
-// only sets up empty default values. The real implementation lives in
-// the private dotfiles-bunker custom layer (custom/quickshell/services/
-// UsageTracker.qml), which provides the actual data fetching.
+// only sets up empty default values. Hosts that want real data provide
+// their own UsageTracker.qml override in their custom layer (in
+// ~/.config/quickshell/services/), which replaces this file at load
+// time.
 //
-// If you don't have the bunker installed, the bar widget will show
-// "—" and the popup will be empty. The service is fully usable for
-// layout/UI testing without the implementation.
+// Without a custom layer deployed, the bar widget shows "—" and the
+// popup is empty. The service is fully usable for layout/UI testing
+// without the implementation.
 
 pragma Singleton
 pragma ComponentBehavior: Bound
@@ -83,8 +84,9 @@ Singleton {
     }
 
     // Compact text shown in the bar widget. With no implementation
-    // deployed, this shows "—" (em dash). The bunker's implementation
-    // overrides this file at deploy time and provides real values.
+    // deployed, this shows "—" (em dash). A custom layer override of
+    // this service can populate the properties above to provide real
+    // values, and `compactText` will reflect them automatically.
     property string compactText: {
         if (loading) return "…"
         if (hasError) return "—"
