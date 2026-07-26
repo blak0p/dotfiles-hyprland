@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import random
+import typing
 from pathlib import Path
 from urllib.parse import urlparse, unquote
 
@@ -29,7 +30,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QGuiApplication
 
 from core.backends import BackendError, MissingDependencyError, get_backend
-from core.backends.base import ImageTransition
+from core.backends.base import ImageTransition, WallpaperBackend
 from core.colors import PALETTE, PALETTE_NAMES, ColorLoader, ColorLookup
 from core.firstframe import first_frame
 from core.integrations import notify_color_tools
@@ -58,7 +59,7 @@ _THUMB_SIZE = QSize(1920, 1920)
 
 # Qt hands filterAcceptsRow a transient or persistent index; accept the union
 # the base declares so type-checkers don't flag a narrowed override.
-_Index = QModelIndex | QPersistentModelIndex
+_Index = typing.Union[QModelIndex, QPersistentModelIndex]
 
 
 class _WallpaperFilterProxy(QSortFilterProxyModel):
@@ -124,6 +125,47 @@ class _WarmSignals(QObject):
     finished = Signal(str, bool)  # path key, whether the still is now cached
 
 
+class _ApplySignals(QObject):
+    """Carries the apply worker's result back to the main thread."""
+
+    finished = Signal(str)  # status message
+    error = Signal(str)     # error message
+
+
+class _ApplyWorker(QRunnable):
+    """Apply a wallpaper off the UI thread so subprocess calls never block the GUI."""
+
+    def __init__(
+        self,
+        backend: WallpaperBackend,
+        path: Path,
+        kind: str,
+        transition: ImageTransition | None,
+        color_hook: str | None,
+    ) -> None:
+        super().__init__()
+        self._backend = backend
+        self._path = path
+        self._kind = kind
+        self._transition = transition
+        self._color_hook = color_hook
+        self.signals = _ApplySignals()
+
+    def run(self) -> None:
+        try:
+            if self._kind == "video":
+                self._backend.set_video(self._path, self._transition)
+            else:
+                self._backend.set_image(self._path, self._transition)
+            save_state(self._path, self._kind)
+            notify_color_tools(self._path, self._kind, self._color_hook)
+            self.signals.finished.emit(f"✓ applied {self._path.name}")
+        except MissingDependencyError as exc:
+            self.signals.error.emit(f"⚠ {exc}")
+        except BackendError as exc:
+            self.signals.error.emit(f"⚠ failed to apply: {exc}")
+
+
 class _FirstFrameWarmer(QRunnable):
     """Pre-extract a video's first frame off the UI thread when it's selected.
 
@@ -164,9 +206,9 @@ class Controller(QObject):
     # Map of source id -> random script path. Resolved once at init from the
     # illogical-impulse scripts dir (same place switchwall.sh lives).
     _RANDOM_SOURCES: dict[str, str] = {
-        "konachan": "~/.config/quickshell/ii/scripts/colors/random/random_konachan_wall.sh",
+        "konachan": "~/.config/quickshell/ii/scripts/colors/random/random_anime.sh",
+        "gelbooru-animated": "~/.config/quickshell/ii/scripts/colors/random/random_anime.sh",
         "wallhaven": "~/.config/quickshell/ii/scripts/colors/random/random_wallhaven_wall.sh",
-        "waifu":    "~/.config/quickshell/ii/scripts/colors/random/random_waifuim_wall.sh",
     }
 
     def __init__(self, parent: QObject | None = None) -> None:
@@ -213,6 +255,9 @@ class Controller(QObject):
         self._warming: set[str] = set()  # extraction currently in flight
         self._warm_signals = _WarmSignals(self)
         self._warm_signals.finished.connect(self._on_warm_finished)
+
+        self._apply_pool = QThreadPool(self)
+        self._apply_pool.setMaxThreadCount(1)
         self.reload()
 
     # --- properties exposed to QML --------------------------------------
@@ -345,24 +390,14 @@ class Controller(QObject):
         entry = self._model.entry_at(source)
         if entry is None:
             return
-        try:
-            # Fixed random transition; fps follows the display refresh so the
-            # switch animation is as smooth as the monitor can show (a per-user
-            # transition picker may return later). Video reuses it for the
-            # seamless lead-in: swww animates to the clip's first frame, then
-            # mpvpaper takes over.
-            transition = ImageTransition(fps=self._transition_fps())
-            if entry.kind == "video":
-                self._backend.set_video(entry.path, transition)
-            else:
-                self._backend.set_image(entry.path, transition)
-            save_state(entry.path, entry.kind)
-            notify_color_tools(entry.path, entry.kind, self._config.color_hook)
-            self._set_status(f"✓ applied {entry.name}")
-        except MissingDependencyError as exc:
-            self._set_status(f"⚠ {exc}")
-        except BackendError as exc:
-            self._set_status(f"⚠ failed to apply: {exc}")
+        # Resolve transition on the main thread (accesses QGuiApplication).
+        transition = ImageTransition(fps=self._transition_fps())
+        worker = _ApplyWorker(
+            self._backend, entry.path, entry.kind, transition, self._config.color_hook
+        )
+        worker.signals.finished.connect(self._set_status)
+        worker.signals.error.connect(self._set_status)
+        self._apply_pool.start(worker)
 
     @Slot(str)
     def randomFrom(self, source: str) -> None:
@@ -374,9 +409,8 @@ class Controller(QObject):
         (samurai, scenery, cyberpunk, …) on each call so every fetch brings a
         different vibe.
         """
-        # "konachan" is the umbrella for all anime — randomly pick a backend.
-        if source == "konachan":
-            source = random.choice(("konachan", "waifu"))
+        # "konachan" now maps directly to random_anime.sh (5 sources:
+        # Konachan, waifu.im, nekos.best, Konachan GIFs, Gelbooru).
         script = os.path.expanduser(self._RANDOM_SOURCES.get(source, ""))
         if not script or not os.path.isfile(script):
             self.randomFailed.emit(f"unknown random source: {source}")
@@ -386,15 +420,20 @@ class Controller(QObject):
             return
         proc = QProcess(self)
         proc.setProcessChannelMode(QProcess.SeparateChannels)
+
+        # Env base con credenciales compartidas (las lee del entorno del sistema)
+        env = QProcessEnvironment.systemEnvironment()
         if source == "wallhaven" and self._wallhaven_presets:
             preset = self._wallhaven_presets[self._wallhaven_idx]
             self._wallhaven_idx = (self._wallhaven_idx + 1) % len(self._wallhaven_presets)
             tags = wallhaven_preset_tags(preset)
             if tags:
-                env = QProcessEnvironment.systemEnvironment()
                 env.insert("WALLFLIPER_TAGS", " ".join(tags))
                 env.insert("WALLFLIPER_PRESET", preset)
-                proc.setProcessEnvironment(env)
+        if source == "gelbooru-animated":
+            env.insert("WALLFLIPER_VIDEO_MODE", "1")
+
+        proc.setProcessEnvironment(env)
         # konachan (and others): no explicit env → child inherits our env
         # (setProcessEnvironment is not called, so PATH etc. are preserved)
         # Clean up the QProcess once it's done so we don't leak handles across

@@ -14,29 +14,14 @@ Window {
     color: "transparent"
 
     // wlr-layer-shell: full-screen overlay above everything (anchored to all
-    // four edges). The surface fills the screen but is transparent except for
-    // the floating bar and the card strip; the transparent rest is a
-    // click-catcher that dismisses (see dismissArea below) —
-    // click-away-to-close, like a launcher.
-    //
-    // Exclusive keyboard: the overlay holds the keyboard the whole time it's
-    // mapped, like a launcher (rofi/wofi). OnDemand delegates focus to the
-    // compositor's normal policy, so a `focus_follows_mouse` compositor steals
-    // the keyboard the moment the pointer leaves the surface — defocusing on
-    // hover-out. Exclusive ignores pointer position entirely; you stay focused
-    // while browsing and close with Esc / apply, not by drifting the mouse off.
-    // The folder picker stays reachable because openFolderPicker() hides the
-    // surface (visible = false), releasing the keyboard grab so the portal
-    // chooser is topmost and focused.
+    // four edges). OnDemand keyboard: the overlay keeps focus only while the
+    // pointer is over it, but never captures exclusively — avoids locking the
+    // session if the GUI thread ever stalls.
     LayerShell.Window.scope: "wallfliper"
     LayerShell.Window.layer: LayerShell.Window.LayerOverlay
-    LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityExclusive
+    LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityOnDemand
     LayerShell.Window.anchors: LayerShell.Window.AnchorTop | LayerShell.Window.AnchorBottom | LayerShell.Window.AnchorLeft | LayerShell.Window.AnchorRight
 
-    // Force the surface onto the compositor's active monitor (the one with the
-    // cursor when the hotkey fires). Without this, layer-shell-qt falls back to
-    // ScreenFromQWindow, which lets Qt pick a screen by its own enumeration order
-    // — on a multi-monitor Hyprland setup that's not the one the cursor is on.
     LayerShell.Window.screenConfiguration: LayerShell.Window.ScreenFromCompositor
     LayerShell.Window.wantsToBeOnActiveScreen: true
 
@@ -278,10 +263,14 @@ Window {
                 controller.setKindFilter("all")     // everything
             else if (event.text === "c")
                 win.enterColorMode()                // color filter strip
-            // Ctrl+Shift+K: anime source (randomly konachan or waifu.im).
+            // Ctrl+Shift+K: anime source (random_anime.sh, 5 sources).
+            // Ctrl+Shift+V: vídeos (Gelbooru animated only, source 4).
             // Ctrl+Shift+W: sitios (wallhaven, rotates aesthetic presets).
             else if (event.key === Qt.Key_K && (event.modifiers & (Qt.ControlModifier | Qt.ShiftModifier)) == (Qt.ControlModifier | Qt.ShiftModifier)) {
                 controller.randomFrom("konachan"); Qt.quit()
+            }
+            else if (event.key === Qt.Key_V && (event.modifiers & (Qt.ControlModifier | Qt.ShiftModifier)) == (Qt.ControlModifier | Qt.ShiftModifier)) {
+                controller.randomFrom("gelbooru-animated"); Qt.quit()
             }
             else if (event.key === Qt.Key_W && (event.modifiers & (Qt.ControlModifier | Qt.ShiftModifier)) == (Qt.ControlModifier | Qt.ShiftModifier)) {
                 controller.randomFrom("wallhaven"); Qt.quit()
@@ -353,12 +342,14 @@ Window {
                 }
 
                 // ---- Random source buttons: fetch from online collections.
-                // "animé" → randomly picks between konachan (SFW waifu tags)
-                // and waifu.im (sexy anime, SFW endpoint) on each click.
+                // "animé" → random_anime.sh (5 sources: Konachan, waifu.im,
+                // nekos.best, Konachan GIFs, Gelbooru).
+                // "vídeos" → Gelbooru animated only (MP4/GIF, source 4).
                 // "sitios" → wallhaven rotating through aesthetic presets.
                 Repeater {
                     model: [
                         { src: "konachan", label: "animé" },
+                        { src: "gelbooru-animated", label: "vídeos" },
                         { src: "wallhaven", label: "sitios" }
                     ]
                     delegate: Rectangle {
@@ -392,6 +383,32 @@ Window {
                         }
                     }
                 }
+            }
+        }
+
+        Rectangle {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: 24
+            width: 64
+            height: 30
+            color: Theme.bg
+            border.color: Theme.frame
+            border.width: Theme.frameWidth
+            z: 10
+
+            Text {
+                anchors.centerIn: parent
+                text: "close"
+                color: Theme.text
+                font.family: Theme.fontFamily
+                font.pixelSize: 13
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Qt.quit()
             }
         }
 
@@ -582,7 +599,6 @@ Window {
                 Timer { id: expandTimer; interval: carousel.expandDelay; onTriggered: cell.expanded = true }
                 onSelectedChanged: {
                     if (selected) {
-                        if (kind === "video") controller.ensurePreview(index)
                         expandTimer.restart()
                     } else {
                         expandTimer.stop()
@@ -590,13 +606,12 @@ Window {
                     }
                 }
                 Component.onCompleted: if (selected) {
-                    if (kind === "video") controller.ensurePreview(index)
                     expandTimer.restart()
                 }
 
-                // A video preview plays only on the focused cell; generated
-                // lazily (cached after the first time); at most one cell previews.
-                readonly property bool previewing: selected && kind === "video" && preview !== ""
+                // Animated previews can stall the Qt scene graph. Keep the
+                // selector static; applying the video still uses mpvpaper.
+                readonly property bool previewing: false
 
                 // Expanded width follows the wallpaper's real aspect so the
                 // whole image is visible, corners included. The thumbnail's

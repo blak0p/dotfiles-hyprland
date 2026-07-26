@@ -86,8 +86,7 @@ _MPV_OPTIONS = " ".join(
         "--no-audio",
         "no-config",
         "no-osd",
-        "--hwdec=auto",
-        "--profile=high-quality",
+        "--hwdec=no",
         "--video-sync=audio",
     ]
 )
@@ -106,6 +105,7 @@ _VIDEO_SWAP_DELAY_S = 0.8
 # detached driver gates the unpause on the full duration regardless, so motion
 # never begins before the animation visually ends.
 _MPV_PREWARM_S = 0.6
+_RUN_TIMEOUT_S = 15.0
 _SEAMLESS_DRIVER = Path(__file__).resolve().parent.parent / "seamless.py"
 
 
@@ -305,7 +305,7 @@ class WlrootsBackend(WallpaperBackend):
 
     @staticmethod
     def _mpvpaper_cmd(mpvpaper: str, path: Path, ipc_socket: str | None = None) -> list[str]:
-        """argv for a detached, auto-pausing mpvpaper covering every output.
+        """argv for a detached mpvpaper covering every output.
 
         Without `ipc_socket` it is a hard cut: start playing immediately. With
         one it starts paused on frame 0 with an IPC server, for the seamless
@@ -316,7 +316,7 @@ class WlrootsBackend(WallpaperBackend):
             opts += " pause=no"
         else:
             opts += f" pause=yes --input-ipc-server={ipc_socket}"
-        return [mpvpaper, "-p", "-o", opts, _ALL_OUTPUTS, str(path)]
+        return [mpvpaper, "-o", opts, _ALL_OUTPUTS, str(path)]
 
     # --- helpers --------------------------------------------------------
 
@@ -417,14 +417,24 @@ class WlrootsBackend(WallpaperBackend):
         )
 
     @staticmethod
-    def _run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
-        result = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=False,
-        )
+    def _run(
+        cmd: list[str],
+        check: bool = True,
+        timeout: float | None = _RUN_TIMEOUT_S,
+    ) -> subprocess.CompletedProcess:
+        try:
+            result = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            raise BackendError(
+                f"command timed out ({timeout}s): {' '.join(cmd)}"
+            ) from None
         if check and result.returncode != 0:
             raise BackendError(
                 f"command failed ({result.returncode}): {' '.join(cmd)}\n"
