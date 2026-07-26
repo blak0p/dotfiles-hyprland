@@ -87,6 +87,7 @@ _MPV_OPTIONS = " ".join(
         "no-config",
         "no-osd",
         "--hwdec=no",
+        "--video-fit=cover",
         "--video-sync=audio",
     ]
 )
