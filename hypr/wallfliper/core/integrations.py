@@ -59,6 +59,10 @@ def _color_source(path: Path, kind: WallpaperKind) -> tuple[Path | None, str]:
     prefix is an `ffmpeg ... &&` that writes the frame just before the notify
     command runs. Returns (None, "") when video can't be themed (no ffmpeg).
     """
+    if kind == "scene":
+        # Scene wallpapers have no usable still frame: the preview is a tiny
+        # thumbnail and the real content is proprietary. Skip color theming.
+        return None, ""
     if kind != "video":
         return path, ""
     if not shutil.which("ffmpeg"):

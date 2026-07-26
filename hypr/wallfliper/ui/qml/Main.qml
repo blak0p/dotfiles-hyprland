@@ -259,6 +259,8 @@ Window {
                 controller.setKindFilter("image")   // images only
             else if (event.text === "v")
                 controller.setKindFilter("video")   // videos only
+            else if (event.text === "s")
+                controller.setKindFilter("scene")   // scenes only
             else if (event.text === "e")
                 controller.setKindFilter("all")     // everything
             else if (event.text === "c")

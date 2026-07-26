@@ -153,7 +153,9 @@ class _ApplyWorker(QRunnable):
 
     def run(self) -> None:
         try:
-            if self._kind == "video":
+            if self._kind == "scene":
+                self._backend.set_scene(self._path)
+            elif self._kind == "video":
                 self._backend.set_video(self._path, self._transition)
             else:
                 self._backend.set_image(self._path, self._transition)
@@ -276,7 +278,7 @@ class Controller(QObject):
 
     @Property(str, notify=kindFilterChanged)
     def kindFilter(self) -> str:
-        """Active kind filter: "all", "image", or "video"."""
+        """Active kind filter: "all", "image", "video", or "scene"."""
         return self._kind_filter
 
     @Property(str, notify=colorFilterChanged)
@@ -297,10 +299,10 @@ class Controller(QObject):
 
     @Slot(str)
     def setKindFilter(self, kind: str) -> None:
-        """Show only `kind` ("image"/"video"), or "all". Idempotent: setting the
+        """Show only `kind` ("image"/"video"/"scene"), or "all". Idempotent: setting the
         mode that's already active is a no-op (re-pressing the key does nothing).
         """
-        if kind not in ("all", "image", "video") or kind == self._kind_filter:
+        if kind not in ("all", "image", "video", "scene") or kind == self._kind_filter:
             return
         self._kind_filter = kind
         self._proxy.set_kinds(frozenset() if kind == "all" else frozenset({kind}))

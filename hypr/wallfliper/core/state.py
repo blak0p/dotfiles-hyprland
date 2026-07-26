@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal
 
-WallpaperKind = Literal["image", "video"]
+WallpaperKind = Literal["image", "video", "scene"]
 
 _APP = "wallfliper"
 

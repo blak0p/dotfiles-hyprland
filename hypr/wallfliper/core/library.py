@@ -14,6 +14,7 @@ IMAGE_EXTENSIONS: frozenset[str] = frozenset(
 VIDEO_EXTENSIONS: frozenset[str] = frozenset(
     {"mp4", "mkv", "webm", "mov", "avi", "m4v"}
 )
+SCENE_EXTENSIONS: frozenset[str] = frozenset({"scene"})
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,8 @@ def kind_of(path: Path) -> WallpaperKind | None:
         return "image"
     if ext in VIDEO_EXTENSIONS:
         return "video"
+    if ext in SCENE_EXTENSIONS:
+        return "scene"
     return None
 
 
@@ -47,7 +50,9 @@ def scan(directory: Path) -> list[WallpaperEntry]:
 
     entries: list[WallpaperEntry] = []
     for child in directory.iterdir():
-        if child.name.startswith(".") or not child.is_file():
+        if child.name.startswith("."):
+            continue
+        if not child.is_file() and not (child.suffix.lower() == ".scene" and child.is_symlink()):
             continue
         kind = kind_of(child)
         if kind is not None:

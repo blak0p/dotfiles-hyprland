@@ -127,6 +127,29 @@ class WlrootsBackend(WallpaperBackend):
 
     # --- public API -----------------------------------------------------
 
+    def set_scene(self, path: Path) -> None:
+        """Render a Wallpaper Engine scene via linux-wallpaperengine.
+
+        `path` is a symlink (`.scene`) pointing to a workshop directory
+        containing scene.pkg and project.json. Kills any running
+        mpvpaper first, then launches the engine on the focused monitor.
+        """
+        self._cancel_pending_transition()
+        self._stop_video()
+        # Kill previous scene engine too
+        subprocess.run(
+            ["pkill", "-x", "linux-wallpaperengine"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        scene_dir = path.resolve()
+        eng = self._require("linux-wallpaperengine")
+        monitor = self._focused_monitor()
+        self._spawn_detached(
+            [eng, "--screen-root", monitor, "--silent", "--fps", "30", str(scene_dir)]
+        )
+
     def set_image(self, path: Path, transition: ImageTransition | None = None) -> None:
         self._cancel_pending_transition()  # a pending video must not map over the image
         self._stop_video()
@@ -442,6 +465,26 @@ class WlrootsBackend(WallpaperBackend):
                 f"{result.stderr.strip()}"
             )
         return result
+
+    @staticmethod
+    def _focused_monitor() -> str:
+        """Return the name of the currently focused monitor via hyprctl.
+
+        Falls back to '*' when hyprctl is unavailable or parsing fails, which
+        mpvpaper interprets as all outputs.
+        """
+        try:
+            result = subprocess.run(
+                ["hyprctl", "monitors", "-j"],
+                capture_output=True, text=True, check=False, timeout=5.0,
+            )
+            monitors = json.loads(result.stdout)
+            if monitors:
+                focused = next((m for m in monitors if m.get("focused")), monitors[0])
+                return focused.get("name", "*")
+        except Exception:
+            pass
+        return "*"
 
     @staticmethod
     def _spawn_detached(cmd: list[str]) -> subprocess.Popen:

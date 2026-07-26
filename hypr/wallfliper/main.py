@@ -32,7 +32,9 @@ def _restore() -> int:
         return 1
     backend = get_backend()
     try:
-        if state.kind == "video":
+        if state.kind == "scene":
+            backend.set_scene(path)
+        elif state.kind == "video":
             backend.set_video(path)
         else:
             backend.set_image(path)
