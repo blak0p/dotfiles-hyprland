@@ -27,7 +27,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from .base import BackendError, ImageTransition, WallpaperBackend
+from .base import BackendError, ImageTransition, MissingDependencyError, WallpaperBackend
+from .wlroots import WlrootsBackend
 
 
 # Path to the illogical-impulse switchwall.sh. Resolved from the dotfiles
@@ -60,7 +61,12 @@ class QuickshellBackend(WallpaperBackend):
       material colors + applies via Quickshell Background).
     - set_video: `mpvpaper` directly (switchwall.sh does the same for video),
       plus `switchwall.sh --image <first-frame>` first so colors still match.
+    - set_scene: delegates to the wlroots backend (linux-wallpaperengine) since
+      switchwall.sh has no concept of scene wallpapers.
     """
+
+    def __init__(self) -> None:
+        self._wlroots: WlrootsBackend | None = None
 
     def is_available(self) -> bool:
         try:
@@ -88,6 +94,23 @@ class QuickshellBackend(WallpaperBackend):
                 f"switchwall.sh failed (exit {exc.returncode}): "
                 f"{exc.stderr.strip()}"
             ) from exc
+
+    def set_scene(self, path: Path) -> None:
+        """Apply a Wallpaper Engine scene via linux-wallpaperengine.
+
+        Delegates to the wlroots backend since switchwall.sh has no scene
+        support. Lazy-init the backend so a missing binary only errors when
+        a scene is actually applied (not on every `is_available` check).
+        """
+        if self._wlroots is None:
+            self._wlroots = WlrootsBackend()
+            try:
+                self._wlroots._require("linux-wallpaperengine")
+            except MissingDependencyError:
+                raise BackendError(
+                    "linux-wallpaperengine is required for scene wallpapers."
+                ) from None
+        self._wlroots.set_scene(path)
 
     def set_video(
         self, path: Path, transition: ImageTransition | None = None

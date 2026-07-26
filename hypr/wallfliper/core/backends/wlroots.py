@@ -132,7 +132,8 @@ class WlrootsBackend(WallpaperBackend):
 
         `path` is a symlink (`.scene`) pointing to a workshop directory
         containing scene.pkg and project.json. Kills any running
-        mpvpaper first, then launches the engine on the focused monitor.
+        mpvpaper first, then launches the engine on every connected
+        monitor so there are no mismatched backgrounds across screens.
         """
         self._cancel_pending_transition()
         self._stop_video()
@@ -145,10 +146,18 @@ class WlrootsBackend(WallpaperBackend):
         )
         scene_dir = path.resolve()
         eng = self._require("linux-wallpaperengine")
-        monitor = self._focused_monitor()
-        self._spawn_detached(
-            [eng, "--screen-root", monitor, "--silent", "--fps", "30", str(scene_dir)]
-        )
+        monitors = self._all_monitors()
+        # One --screen-root --bg pair per monitor so every display gets the scene
+        args = [eng]
+        for mon in monitors:
+            args += ["--screen-root", mon]
+        args += ["--bg", str(scene_dir)]
+        args += [
+            "--disable-mouse", "--disable-parallax", "--disable-particles",
+            "--scaling", "fill",
+            "--silent", "--fps", "30",
+        ]
+        self._spawn_detached(args)
 
     def set_image(self, path: Path, transition: ImageTransition | None = None) -> None:
         self._cancel_pending_transition()  # a pending video must not map over the image
@@ -485,6 +494,25 @@ class WlrootsBackend(WallpaperBackend):
         except Exception:
             pass
         return "*"
+
+    @staticmethod
+    def _all_monitors() -> list[str]:
+        """Return the name of every connected monitor via hyprctl.
+
+        Falls back to ['*'] when hyprctl is unavailable or parsing fails,
+        which makes linux-wallpaperengine use all available outputs.
+        """
+        try:
+            result = subprocess.run(
+                ["hyprctl", "monitors", "-j"],
+                capture_output=True, text=True, check=False, timeout=5.0,
+            )
+            monitors = json.loads(result.stdout)
+            if monitors:
+                return [m["name"] for m in monitors if "name" in m]
+        except Exception:
+            pass
+        return ["*"]
 
     @staticmethod
     def _spawn_detached(cmd: list[str]) -> subprocess.Popen:

@@ -53,6 +53,16 @@ def _image_strategy(src: Path, dest: Path, size: QSize) -> bool:
     return image.save(str(dest), "JPEG", quality=85)
 
 
+def _scene_thumb_strategy(src: Path, dest: Path, size: QSize) -> bool:
+    """Use the scene's preview.gif as thumbnail source.
+
+    `src` is a symlink (.scene) pointing to a workshop directory
+    containing preview.gif. Delegates to _image_strategy which handles
+    decode + resize + JPEG output.
+    """
+    return _image_strategy(src.resolve() / "preview.gif", dest, size)
+
+
 def _video_thumb_strategy(src: Path, dest: Path, size: QSize) -> bool:
     """Extract a single representative frame from a video as a JPEG thumbnail.
 
@@ -159,6 +169,7 @@ class ThumbnailLoader(QObject):
         self._inflight: set[str] = set()
         self.register_strategy("image", _image_strategy)
         self.register_strategy("video", _video_thumb_strategy)
+        self.register_strategy("scene", _scene_thumb_strategy)
 
     def register_strategy(self, kind: WallpaperKind, strategy: ThumbStrategy) -> None:
         """Register the thumbnail generator for a wallpaper kind.
