@@ -137,13 +137,7 @@ class WlrootsBackend(WallpaperBackend):
         """
         self._cancel_pending_transition()
         self._stop_video()
-        # Kill previous scene engine too
-        subprocess.run(
-            ["pkill", "-x", "linux-wallpaperengine"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-        )
+        self._stop_scene()
         scene_dir = path.resolve()
         eng = self._require("linux-wallpaperengine")
         monitors = self._all_monitors()
@@ -162,6 +156,7 @@ class WlrootsBackend(WallpaperBackend):
     def set_image(self, path: Path, transition: ImageTransition | None = None) -> None:
         self._cancel_pending_transition()  # a pending video must not map over the image
         self._stop_video()
+        self._stop_scene()
         tool = self._resolve(_SWWW_CANDIDATES)
         self._ensure_daemon(tool)
         self._run([tool, "img", *self._transition_args(transition), str(path)])
@@ -186,6 +181,7 @@ class WlrootsBackend(WallpaperBackend):
         # already mapped — it gets retired below instead of lingering frozen.
         had_pending = self._pending_driver is not None
         self._cancel_pending_transition()
+        self._stop_scene()
         old_pids = self._mpvpaper_pids()
         # Already rendering this exact file → no-op, avoid stacking a 2nd GPU
         # decoder. Skipped when a driver was just cancelled: that mpvpaper is
@@ -389,6 +385,20 @@ class WlrootsBackend(WallpaperBackend):
         """Terminate any running mpvpaper instance (best effort)."""
         subprocess.run(
             ["pkill", "-x", "mpvpaper"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+
+    @staticmethod
+    def _stop_scene() -> None:
+        """Terminate any running linux-wallpaperengine instance (best effort).
+
+        Uses -f because the binary name exceeds the 15-char kernel limit for
+        process names, making -x match impossible.
+        """
+        subprocess.run(
+            ["pkill", "-f", "linux-wallpaperengine"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
