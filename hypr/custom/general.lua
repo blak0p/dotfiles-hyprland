@@ -12,3 +12,13 @@ function ws_both(ws)
     set_ws("HDMI-A-2")
     set_ws("DP-2")
 end
+
+-- Animaciones de ventana estilo Minflair
+hl.curve("ease", { type = "bezier", points = { { 0.25, 0.1 }, { 0.25, 1.0 } } })
+hl.curve("overshot", { type = "bezier", points = { { 0.13, 0.99 }, { 0.29, 1.05 } } })
+
+hl.animation({ leaf = "windowsIn", enabled = true, speed = 5, bezier = "overshot", style = "slide bottom" })
+hl.animation({ leaf = "windowsOut", enabled = true, speed = 5, bezier = "ease", style = "slide bottom" })
+hl.animation({ leaf = "windowsMove", enabled = true, speed = 5, bezier = "overshot", style = "slide" })
+hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "overshot", style = "slide" })
+hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 5, bezier = "overshot", style = "slidevert" })

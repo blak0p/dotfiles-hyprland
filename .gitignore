@@ -2,3 +2,16 @@
 *.sock
 *.log
 session.json.atl/
+
+.atl/
+
+# Private skins / backups (local reference only, never public)
+*.backup-*/
+*.minflair-*/
+quickshell/Scripts/
+quickshell/modules/
+quickshell/services/
+quickshell/ii/Core/
+quickshell/ii/Modules/
+quickshell/ii/Services/
+quickshell/ii/Scripts/

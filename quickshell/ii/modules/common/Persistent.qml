@@ -158,6 +158,8 @@ Singleton {
                     property list<var> laps: []
                 }
             }
+
+            property list<string> workspaceLabels: ["", "", "", "", "", "", "", "", "", ""]
         }
     }
 }

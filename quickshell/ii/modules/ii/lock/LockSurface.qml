@@ -19,6 +19,24 @@ MouseArea {
     property bool showInputField: active || context.currentText.length > 0
     readonly property bool requirePasswordToPower: Config.options.lock.security.requirePasswordToPower
 
+    readonly property bool wallpaperIsVideo: Config.options.background.wallpaperPath.endsWith(".mp4")
+        || Config.options.background.wallpaperPath.endsWith(".webm")
+        || Config.options.background.wallpaperPath.endsWith(".mkv")
+        || Config.options.background.wallpaperPath.endsWith(".avi")
+        || Config.options.background.wallpaperPath.endsWith(".mov")
+    readonly property string wallpaperPath: wallpaperIsVideo ? Config.options.background.thumbnailPath : Config.options.background.wallpaperPath
+
+    StyledImage {
+        anchors.fill: parent
+        source: root.wallpaperPath
+        fillMode: Image.PreserveAspectCrop
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        color: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.5)
+    }
+
     // Force focus on entry
     function forceFieldFocus() {
         passwordBox.forceActiveFocus();

@@ -9,8 +9,13 @@ fuzzel
 hyprlock
 hypridle
 xdg-desktop-portal-hyprland
+xdg-desktop-portal-kde
 xsettingsd
 gvfs
+dolphin
+qt6-wayland
+qt6ct
+plasma-integration
 polkit-gnome
 btop
 cava

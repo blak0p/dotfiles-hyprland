@@ -317,6 +317,12 @@ Item { // Bar content region
                 }
             }
 
+            UpdatesButton {
+                visible: root.useShortenedForm === 0
+                Layout.alignment: Qt.AlignVCenter
+                Layout.leftMargin: 4
+            }
+
             SysTray {
                 visible: root.useShortenedForm === 0
                 Layout.fillWidth: false
@@ -327,15 +333,6 @@ Item { // Bar content region
             Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-            }
-
-            // CodexBar — usage monitor for Codex/OpenAI.
-            // Invisible by default; enable by setting
-            // Config.options.codexbar.queryCommand in your local config.
-            CodexBarWidget {
-                visible: root.useShortenedForm < 2
-                Layout.leftMargin: 4
-                Layout.alignment: Qt.AlignVCenter
             }
 
             // Weather

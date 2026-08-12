@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dotfiles-hyprland installer — symlinks hypr waybar quickshell fuzzel gtk-3.0 gtk-4.0 xsettingsd systemd btop cava to ~/.config/.
+# dotfiles-hyprland installer — symlinks desktop and Hyprland configs to ~/.config/.
 # Run standalone (clone this repo + ./install.sh) or via the umbrella.
 set -eEuo pipefail
 
@@ -36,7 +36,7 @@ deploy_symlink() {
 }
 
 deploy_configs() {
-    local entries=(hypr waybar quickshell fuzzel gtk-3.0 gtk-4.0 xsettingsd systemd btop cava)
+    local entries=(hypr waybar quickshell fuzzel gtk-3.0 gtk-4.0 xsettingsd systemd btop cava qt6ct)
     for name in "${entries[@]}"; do
         if [ -e "$REPO_ROOT/$name" ]; then
             deploy_symlink "$REPO_ROOT/$name" "$HOME/.config/$name"

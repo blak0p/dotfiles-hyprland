@@ -5,6 +5,9 @@
 -- Launcher
 hl.bind("SUPER + Space", hl.dsp.global("quickshell:searchToggleRelease"), { description = "Shell: Toggle search" })
 
+-- Rename workspace: modal tipo Win+R con Rofi
+hl.bind("SUPER + R", hl.dsp.exec_cmd("bash $HOME/.config/hypr/scripts/rename_workspace.sh"), { description = "Workspace: Rename active" })
+
 -- Window management (pisan los de end-4)
 hl.bind("SUPER + C", hl.dsp.window.close(), { description = "Window: Close" })
 hl.bind("SUPER + F",
@@ -28,6 +31,12 @@ hl.bind("SUPER + H", hl.dsp.focus({ monitor = "-1" }),
     { description = "Monitor: Focus left" })
 hl.bind("SUPER + L", hl.dsp.focus({ monitor = "+1" }),
     { description = "Monitor: Focus right" })
+
+-- Workspace navigation (Ctrl + Win + H/L)
+hl.bind("CTRL + SUPER + H", hl.dsp.focus({ workspace = "r-1" }),
+    { description = "Workspace: Previous" })
+hl.bind("CTRL + SUPER + L", hl.dsp.focus({ workspace = "r+1" }),
+    { description = "Workspace: Next" })
 
 -- Mover ventana con flechas + Shift
 hl.bind("SUPER + SHIFT + left", hl.dsp.window.move({ direction = "l" }),

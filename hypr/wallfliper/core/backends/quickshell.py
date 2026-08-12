@@ -22,11 +22,14 @@ it in wallfliper (not tracked here yet — defaults to switchwall's auto-detect)
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
 
+from ..scene_still import scene_still
 from .base import BackendError, ImageTransition, MissingDependencyError, WallpaperBackend
 from .wlroots import WlrootsBackend
 
@@ -42,6 +45,12 @@ _SWITCHWALL_CANDIDATES = (
         "~/.config/hypr/hyprland/scripts/colors/switchwall.sh"
     ),
 )
+
+# The two places the shell reads its wallpaper from. Scenes never go through
+# switchwall.sh, so both stay stale unless set_scene syncs them to the still.
+_SHELL_CONFIG = os.path.expanduser("~/.config/illogical-impulse/config.json")
+_HYPRLOCK_COLORS = os.path.expanduser("~/.config/hypr/hyprlock/colors.conf")
+_BACKGROUND_LINE = re.compile(r"^\$background_image\s*=.*$", re.MULTILINE)
 
 
 def _resolve_switchwall() -> str:
@@ -80,6 +89,7 @@ class QuickshellBackend(WallpaperBackend):
     ) -> None:
         # transition is ignored: Quickshell's Background.qml crossfades on its
         # own when wallpaperPath changes, so there's nothing for us to animate.
+        WlrootsBackend._stop_scene()  # kill linux-wallpaperengine if running
         script = _resolve_switchwall()
         try:
             subprocess.run(
@@ -111,6 +121,13 @@ class QuickshellBackend(WallpaperBackend):
                     "linux-wallpaperengine is required for scene wallpapers."
                 ) from None
         self._wlroots.set_scene(path)
+        # Scenes never reach switchwall.sh, so the shell's wallpaper sources
+        # would keep showing whatever image was last set. Point them at a
+        # rendered still so the lock screen and the fallback layer under the
+        # live scene match the scene. Best-effort: a failed render skips sync.
+        still = scene_still(path.resolve())
+        if still is not None:
+            _sync_shell_background(still)
 
     def set_video(
         self, path: Path, transition: ImageTransition | None = None
@@ -121,6 +138,7 @@ class QuickshellBackend(WallpaperBackend):
         # the simplest correct path is to just call switchwall.sh with the
         # video path (its `is_video` branch handles everything). The `--image`
         # flag works for videos too because switchwall.sh detects the extension.
+        WlrootsBackend._stop_scene()  # kill linux-wallpaperengine if running
         script = _resolve_switchwall()
         try:
             subprocess.run(
@@ -135,3 +153,58 @@ class QuickshellBackend(WallpaperBackend):
                 f"switchwall.sh failed (exit {exc.returncode}): "
                 f"{exc.stderr.strip()}"
             ) from exc
+
+
+def _sync_shell_background(still: Path) -> None:
+    """Point the shell's wallpaper sources at a still of the applied scene.
+
+    Writes the still into the illogical-impulse config (what paints the
+    quickshell background layer and what the lock screen reads) and into the
+    hyprlock `$background_image` variable (matugen's lock-screen source). Both
+    are atomically replaced like switchwall.sh does, and the next image/video
+    apply overwrites them again through the normal pipeline. Idempotent: if the
+    still is already in place, nothing is written — quickshell watches
+    config.json (Config.qml `watchChanges`) and reloads on ANY change, which
+    repaints the still layer over the live engine at login. Best-effort and
+    never raises: a failed sync must not break the already-applied scene.
+    """
+    path = str(still)
+    try:
+        cfg = json.loads(Path(_SHELL_CONFIG).read_text())
+    except (OSError, json.JSONDecodeError):
+        cfg = {}
+    if cfg.get("background", {}).get("wallpaperPath") == path:
+        return
+    cfg.setdefault("background", {})
+    cfg["background"]["wallpaperPath"] = path
+    cfg["background"]["thumbnailPath"] = path
+    try:
+        _atomic_write(Path(_SHELL_CONFIG), json.dumps(cfg, indent=2) + "\n")
+    except OSError:
+        return
+    _set_hyprlock_background(path)
+
+
+def _set_hyprlock_background(path: str) -> None:
+    """Replace the `$background_image` line in hyprlock's colors.conf."""
+    colors = Path(_HYPRLOCK_COLORS)
+    try:
+        text = colors.read_text()
+    except OSError:
+        return
+    line = f"$background_image = {path}"
+    if _BACKGROUND_LINE.search(text):
+        text = _BACKGROUND_LINE.sub(line, text)
+    else:
+        text = text.rstrip() + "\n" + line + "\n"
+    try:
+        _atomic_write(colors, text)
+    except OSError:
+        pass
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    """Write `content` to `path` via a same-dir tmp + rename (atomic)."""
+    tmp = Path(str(path) + ".tmp")
+    tmp.write_text(content)
+    tmp.replace(path)

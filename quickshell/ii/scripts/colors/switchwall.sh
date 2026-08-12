@@ -259,6 +259,20 @@ switch() {
         fi
     fi
 
+    # Keep wallfliper's restore state in sync so its login --restore re-applies
+    # whatever was set here (settings app, random sources, CLI). Scenes bypass
+    # this script entirely; wallfliper writes state for them on its own.
+    if [[ -n "$imgpath" ]]; then
+        if is_video "$imgpath"; then
+            wf_kind="video"
+        else
+            wf_kind="image"
+        fi
+        wf_state="$XDG_CONFIG_HOME/wallfliper/state.json"
+        mkdir -p "$(dirname "$wf_state")"
+        printf '{\n  "path": "%s",\n  "kind": "%s"\n}\n' "$imgpath" "$wf_kind" > "$wf_state"
+    fi
+
     # Determine mode if not set
     if [[ -z "$mode_flag" ]]; then
         current_mode=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null | tr -d "'")
