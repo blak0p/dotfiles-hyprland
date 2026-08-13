@@ -15,5 +15,6 @@ quickshell/ii/Core/
 quickshell/ii/Services/
 quickshell/ii/Scripts/
 quickshell/ii/services/CodexBar.qml
+quickshell/ii/Modules/Bar/Widgets/MainPanel/Dashboard/CodexBarCard.qml
 quickshell/ii/modules/ii/bar/CodexBarWidget.qml
 quickshell/ii/modules/ii/bar/CodexBarPopup.qml
