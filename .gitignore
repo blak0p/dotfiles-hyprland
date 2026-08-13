@@ -12,7 +12,6 @@ quickshell/Scripts/
 quickshell/modules/
 quickshell/services/
 quickshell/ii/Core/
-quickshell/ii/Modules/
 quickshell/ii/Services/
 quickshell/ii/Scripts/
 quickshell/ii/services/CodexBar.qml
