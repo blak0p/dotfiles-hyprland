@@ -6,6 +6,7 @@ import qs.Core
 import qs.Core.Components
 import qs.Core.Services
 import qs.Modules.Bar.Widgets.SystemTray as STray
+import qs.Modules.Bar.Widgets.DynamicIsland
 
 Item {
     id: mainBar
@@ -14,21 +15,24 @@ Item {
     required property var mainPanelWidget
     property bool clockHovered: false
 
+    // 1. Left Island (Minflair Menu + Workspaces)
     Rectangle {
-        id: barContent
+        id: leftIsland
 
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        implicitWidth: hLeftGroup.implicitWidth + 32
         color: Theme.bg
-        radius: Constants.size2Xl
+        radius: height / 2
+        border.width: 1
+        border.color: Qt.rgba(1, 1, 1, 0.08)
 
         RowLayout {
             id: hLeftGroup
 
-            anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
+            anchors.centerIn: parent
             spacing: Constants.sizeLg
-            anchors.leftMargin: 16
 
             MinflairButton {
                 widget: mainBar.mainPanelWidget
@@ -36,41 +40,27 @@ Item {
 
             Workspaces {
             }
-
         }
+    }
 
-        Item {
-            id: centerClockArea
+    // 2. Right Island (Control Center + SysTray + Power)
+    Rectangle {
+        id: rightIsland
 
-            anchors.centerIn: parent
-            width: centerClock.implicitWidth
-            height: mainBar.height
-
-            ClockButton {
-                id: centerClock
-
-                anchors.centerIn: parent
-            }
-
-            MouseArea {
-                id: clockHoverArea
-
-                anchors.fill: parent
-                hoverEnabled: true
-                onEntered: mainBar.clockHovered = true
-                onExited: mainBar.clockHovered = false
-            }
-
-        }
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        implicitWidth: hRightGroup.implicitWidth + 32
+        color: Theme.bg
+        radius: height / 2
+        border.width: 1
+        border.color: Qt.rgba(1, 1, 1, 0.08)
 
         RowLayout {
             id: hRightGroup
 
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
+            anchors.centerIn: parent
             spacing: Constants.sizeLg
-            anchors.rightMargin: 16
 
             ControlCenterButton {
                 notificationService: mainBar.notificationService
@@ -125,20 +115,13 @@ Item {
                                     }
                                 }
                             }
-
                         }
-
                     }
-
                 }
-
             }
 
             PowerButton {
             }
-
         }
-
     }
-
 }

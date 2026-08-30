@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Services.Notifications
+import qs.Core.Services
 
 QtObject {
     id: root
@@ -27,6 +28,12 @@ QtObject {
 
     property var locks: new Set()
 
+    onPopupChanged: {
+        if (!popup) {
+            IslandState.onNotificationFinished(root);
+        }
+    }
+
     property PropertyAnimation progressAnim: PropertyAnimation {
         target: root
         property: "progress"
@@ -42,6 +49,7 @@ QtObject {
             if (root.summary === "Power Menu") {
             }
             root.popup = false;
+            IslandState.onNotificationFinished(root);
         }
     }
 
@@ -103,6 +111,7 @@ QtObject {
         closed = true;
         popup = false;
         notification?.dismiss();
+        IslandState.onNotificationFinished(root);
     }
 
     Component.onCompleted: {

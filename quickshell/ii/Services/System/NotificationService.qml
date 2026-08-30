@@ -36,11 +36,13 @@ Item {
             "id": timestamp,
             "notifData": nd
         });
-        if (!dndEnabled)
+        if (!dndEnabled) {
             activeListModel.insert(0, {
-            "id": timestamp,
-            "notifData": nd
-        });
+                "id": timestamp,
+                "notifData": nd
+            });
+            IslandState.pushNotification(nd);
+        }
 
     }
 
@@ -202,6 +204,7 @@ Item {
                         "id": repId,
                         "notifData": repData
                     });
+                    IslandState.pushNotification(repData);
                 }
             }
         }
@@ -259,14 +262,17 @@ Item {
                         "notifData": nd
                     });
                     activeUpdated = true;
+                    IslandState.pushNotification(nd);
                     break;
                 }
             }
-            if (!activeUpdated)
+            if (!activeUpdated) {
                 activeListModel.insert(0, {
-                "id": notification.id,
-                "notifData": nd
-            });
+                    "id": notification.id,
+                    "notifData": nd
+                });
+                IslandState.pushNotification(nd);
+            }
 
         }
         while (historyListModel.count > 50)removeHistoryItem(historyListModel.count - 1)

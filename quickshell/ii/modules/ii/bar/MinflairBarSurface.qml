@@ -11,6 +11,7 @@ import qs.Modules.Bar
 import qs.Modules.Bar.Widgets.MainPanel
 import qs.Modules.Bar.Widgets.SystemTray
 import qs.Modules.Bar.Widgets.Launcher
+import qs.Modules.Bar.Widgets.DynamicIsland
 import qs.Modules.PackageManager
 import qs.Modules.PowerMenu
 import qs.Core.Components
@@ -64,7 +65,7 @@ Scope {
                 readonly property int barHeight: 48
                 readonly property int barMarginTop: 8
                 readonly property int barMarginSide: 8
-                readonly property int popupStartY: barMarginTop + barHeight
+                readonly property int popupStartY: barMarginTop + barHeight + 8
 
                 Connections {
                     target: barStrip
@@ -114,7 +115,7 @@ Scope {
                         id: barStrip
                         z: 1
                         notificationService: globalNotificationService
-                        mainPanelWidget: mainPanel
+                        mainPanelWidget: unifiedIsland
                         x: surface.barMarginSide
                         y: surface.barMarginTop
                         width: barSurface.width - surface.barMarginSide * 2
@@ -122,15 +123,15 @@ Scope {
                     }
                 }
 
-                // Popup window (dashboard + launcher + tray menus)
+                // Popup window (Unified Dynamic Island + tray menus)
                 PanelWindow {
                     id: popupSurface
 
                     WlrLayershell.layer: WlrLayer.Overlay
                     WlrLayershell.exclusionMode: ExclusionMode.Ignore
-                    WlrLayershell.keyboardFocus: launcherPanel._visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+                    WlrLayershell.keyboardFocus: unifiedIsland.currentMode === "launcher" ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
                     color: "transparent"
-                    focusable: launcherPanel._visible
+                    focusable: unifiedIsland.currentMode === "launcher"
                     screen: surfaceLoader.modelData
 
                     anchors {
@@ -140,21 +141,13 @@ Scope {
                         right: true
                     }
 
-                    MainPanel {
-                        id: mainPanel
-                        popupId: "dashboard"
+                    UnifiedDynamicIsland {
+                        id: unifiedIsland
                         x: (popupSurface.width - implicitWidth) / 2
-                        y: surface.popupStartY
-                    }
+                        y: surface.barMarginTop
 
-                    LauncherPanel {
-                        id: launcherPanel
-                        popupId: "launcher"
-                        x: (popupSurface.width - implicitWidth) / 2
-                        y: surface.popupStartY
-
-                        onIsOpenChanged: {
-                            if (isOpen) {
+                        onCurrentModeChanged: {
+                            if (currentMode === "launcher" || currentMode === "dashboard") {
                                 GlobalFocusGrab.addDismissable(popupSurface);
                             } else {
                                 GlobalFocusGrab.removeDismissable(popupSurface);
@@ -165,7 +158,7 @@ Scope {
                     Connections {
                         target: GlobalFocusGrab
                         function onDismissed() {
-                            if (AppState.activePopup === "launcher") {
+                            if (AppState.activePopup === "launcher" || AppState.activePopup === "dashboard") {
                                 AppState.activePopup = "";
                             }
                         }
@@ -230,17 +223,10 @@ Scope {
 
                     mask: Region {
                         Region {
-                            x: mainPanel.x
-                            y: mainPanel.y
-                            width: mainPanel._visible ? mainPanel.implicitWidth : 0
-                            height: mainPanel._visible ? mainPanel.implicitHeight : 0
-                        }
-
-                        Region {
-                            x: launcherPanel.x
-                            y: launcherPanel.y
-                            width: launcherPanel._visible ? launcherPanel.implicitWidth : 0
-                            height: launcherPanel._visible ? launcherPanel.implicitHeight : 0
+                            x: unifiedIsland.x
+                            y: unifiedIsland.y
+                            width: unifiedIsland.width
+                            height: unifiedIsland.height
                         }
 
                         Region {

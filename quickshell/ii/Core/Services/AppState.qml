@@ -12,6 +12,14 @@ Item {
     signal togglePopup(string popupId)
     signal openPopup(string popupId)
 
+    onTogglePopup: (popupId) => {
+        activePopup = (activePopup === popupId ? "" : popupId);
+    }
+
+    onOpenPopup: (popupId) => {
+        activePopup = popupId;
+    }
+
     function formatTime(seconds) {
         if (seconds <= 0)
             return "Calculating...";
@@ -23,5 +31,4 @@ Item {
         else
             return mins + "m";
     }
-
 }

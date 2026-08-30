@@ -12,19 +12,19 @@ Item {
     property string popupId: ""
     property bool isOpen: false
     property int cornerRadius: Constants.sizeLg * 2
-    property int contentPadding: Constants.sizeLg
+    property int contentPadding: floating ? 0 : Constants.sizeLg
     default property alias content: innerLayout.data
     property int preferredHeight: 0
     property int preferredWidth: 0
     property int contentWidth: -1
     property int contentHeight: -1
-    property bool floating: false
+    property bool floating: true
     readonly property int popupWidth: (contentWidth > 0 ? contentWidth : innerLayout.implicitWidth) + (floating ? contentPadding * 2 : (contentPadding + cornerRadius) * 2)
     readonly property int popupHeight: (contentHeight > 0 ? contentHeight : innerLayout.implicitHeight) + contentPadding * 2
     property int targetHeight: preferredHeight > 0 ? preferredHeight : popupHeight
-    property real smoothHeight: targetHeight
     property int targetWidth: preferredWidth > 0 ? preferredWidth : popupWidth
-    property real smoothWidth: targetWidth
+    property real smoothHeight: 48
+    property real smoothWidth: 160
     property int animationDuration: HyprlandService.enableAnimations ? Constants.animNormal : 0
     property color backgroundColor: Theme.bg
     property bool animateHeight: false
@@ -40,6 +40,7 @@ Item {
     implicitWidth: smoothWidth + 2 * overshootHeadroom
     implicitHeight: smoothHeight + verticalOffset + 100
     visible: _visible
+
     onIsOpenChanged: {
         if (popupId === "")
             return ;
@@ -55,12 +56,14 @@ Item {
                 AppState.activePopup = "";
 
             root.popupClosed();
+            closeDelayTimer.restart();
             if (!HyprlandService.enableAnimations)
                 root._visible = false;
-
         }
     }
+
     state: root.isOpen ? "open" : "closed"
+
     states: [
         State {
             name: "open"
@@ -69,8 +72,9 @@ Item {
                 target: root
                 openProgress: 1
                 bounceProgress: 1
+                smoothWidth: root.targetWidth
+                smoothHeight: root.targetHeight
             }
-
         },
         State {
             name: "closed"
@@ -79,10 +83,12 @@ Item {
                 target: root
                 openProgress: 0
                 bounceProgress: 0
+                smoothWidth: 160
+                smoothHeight: 48
             }
-
         }
     ]
+
     transitions: [
         Transition {
             from: "closed"
@@ -92,48 +98,54 @@ Item {
             ParallelAnimation {
                 NumberAnimation {
                     target: root
-                    property: "openProgress"
-                    duration: root.animationDuration
-                    easing.type: Easing.OutExpo
+                    property: "smoothWidth"
+                    duration: 300
+                    easing.type: Easing.OutBack
+                    easing.overshoot: 1.12
                 }
 
                 NumberAnimation {
                     target: root
-                    property: "bounceProgress"
-                    duration: root.animationDuration
-                    easing.type: Easing.OutExpo
+                    property: "smoothHeight"
+                    duration: 320
+                    easing.type: Easing.OutCubic
                 }
 
+                NumberAnimation {
+                    target: root
+                    property: "openProgress"
+                    duration: 220
+                    easing.type: Easing.OutCubic
+                }
             }
-
         },
         Transition {
             from: "open"
             to: "closed"
             enabled: HyprlandService.enableAnimations
-            onRunningChanged: {
-                if (!running && !root.isOpen)
-                    root._visible = false;
-
-            }
 
             ParallelAnimation {
                 NumberAnimation {
                     target: root
-                    property: "openProgress"
-                    duration: root.animationDuration
-                    easing.type: Easing.InExpo
+                    property: "smoothWidth"
+                    duration: 220
+                    easing.type: Easing.InCubic
                 }
 
                 NumberAnimation {
                     target: root
-                    property: "bounceProgress"
-                    duration: root.animationDuration
-                    easing.type: Easing.InExpo
+                    property: "smoothHeight"
+                    duration: 220
+                    easing.type: Easing.InCubic
                 }
 
+                NumberAnimation {
+                    target: root
+                    property: "openProgress"
+                    duration: 180
+                    easing.type: Easing.InCubic
+                }
             }
-
         }
     ]
 
@@ -141,19 +153,16 @@ Item {
         function onActivePopupChanged() {
             if (popupId !== "" && AppState.activePopup !== popupId)
                 root.isOpen = false;
-
         }
 
         function onTogglePopup(id) {
             if (popupId !== "" && id === popupId)
                 root.isOpen = !root.isOpen;
-
         }
 
         function onOpenPopup(id) {
             if (popupId !== "" && id === popupId)
                 root.isOpen = true;
-
         }
 
         target: AppState
@@ -167,7 +176,6 @@ Item {
         onTriggered: {
             if (!root.isOpen)
                 root._visible = false;
-
         }
     }
 
@@ -184,19 +192,7 @@ Item {
     Process {
         id: screenshotCheckProc
 
-        command: ["pgrep", "-x", "slurp"]
-        onExited: (code) => {
-            if (code === 0)
-                autoCloseTimer.start();
-            else
-                delayCheckProc.running = true;
-        }
-    }
-
-    Process {
-        id: delayCheckProc
-
-        command: ["pgrep", "-f", "screenshot.sh"]
+        command: ["pgrep", "-f", "grimblast"]
         onExited: (code) => {
             if (code === 0)
                 autoCloseTimer.start();
@@ -213,8 +209,8 @@ Item {
         x: root.overshootHeadroom
         y: 0
         opacity: openProgress
-        scale: bounceProgress
         transformOrigin: Item.Top
+        clip: true
 
         HoverHandler {
             onHoveredChanged: {
@@ -307,9 +303,7 @@ Item {
                     x: 0
                     y: 0
                 }
-
             }
-
         }
 
         Rectangle {
@@ -325,31 +319,14 @@ Item {
         ColumnLayout {
             id: innerLayout
 
-            x: root.floating ? root.contentPadding : (root.contentPadding + root.cornerRadius)
-            y: root.contentPadding
-            width: smoothWidth - (root.floating ? root.contentPadding * 2 : (root.contentPadding + root.cornerRadius) * 2)
+            x: root.floating ? 0 : (root.contentPadding + root.cornerRadius)
+            y: root.floating ? 0 : root.contentPadding
+            width: smoothWidth - (root.floating ? 0 : (root.contentPadding + root.cornerRadius) * 2)
+            opacity: openProgress
+
+            Behavior on opacity {
+                NumberAnimation { duration: 180 }
+            }
         }
-
     }
-
-    Behavior on smoothHeight {
-        enabled: HyprlandService.enableAnimations && root.isOpen
-
-        NumberAnimation {
-            duration: Constants.animFast
-            easing.type: Easing.OutExpo
-        }
-
-    }
-
-    Behavior on smoothWidth {
-        enabled: HyprlandService.enableAnimations && root.isOpen
-
-        NumberAnimation {
-            duration: Constants.animFast
-            easing.type: Easing.OutExpo
-        }
-
-    }
-
 }

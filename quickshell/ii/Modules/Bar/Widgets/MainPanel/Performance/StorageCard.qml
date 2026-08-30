@@ -8,7 +8,7 @@ import qs.Core.Services
 PerformanceCard {
     id: root
 
-    property string diskName: SystemStats.diskName
+    property string diskName: "Home"
     property int diskUsage: SystemStats.diskUsage
     property string diskSizeText: SystemStats.diskSizeText
     property var diskParts: root.diskSizeText.split(" / ")
@@ -16,7 +16,7 @@ PerformanceCard {
     property string totalText: diskParts.length > 1 ? diskParts[1] : ""
 
     icon: "disk"
-    title: root.diskName
+    title: "Home"
     usage: root.diskUsage
 
     RowLayout {
@@ -36,7 +36,5 @@ PerformanceCard {
             label: "total"
             value: root.totalText
         }
-
     }
-
 }

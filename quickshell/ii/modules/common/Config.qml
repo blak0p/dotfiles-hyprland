@@ -632,6 +632,21 @@ Singleton {
                     property bool force2CharDayOfWeek: true
                 }
             }
+
+            property JsonObject codexbar: JsonObject {
+                // Command to fetch Codex/OpenAI usage data.
+                // Set this in your local config.json (e.g. ~/.config/illogical-impulse/config.json).
+                // Example:
+                //   "/home/linuxbrew/.linuxbrew/bin/codexbar usage --provider all --format json --status"
+                // Empty string (default) = widget hidden, service inactive.
+                property string queryCommand: ""
+                property int updateInterval: 60000
+                property list<string> enabledProviders: ["codex", "antigravity"]
+
+                // Command that redeems a Codex rate-limit reset credit.
+                // Empty string (default) = reset button hidden.
+                property string resetCommand: ""
+            }
         }
     }
 }

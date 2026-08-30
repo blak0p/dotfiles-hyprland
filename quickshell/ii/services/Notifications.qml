@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 
 import qs.modules.common
 import qs
+import qs.Core.Services
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -180,6 +181,7 @@ Singleton {
                 root.unread++;
             }
             root.notify(newNotifObject);
+            IslandState.pushNotification(newNotifObject);
             // console.log(notifToString(newNotifObject));
             notifFileView.setText(stringifyList(root.list));
         }
@@ -191,6 +193,7 @@ Singleton {
 
     function discardNotification(id) {
         console.log("[Notifications] Discarding notification with ID: " + id);
+        IslandState.onNotificationFinished({ "notificationId": id });
         const index = root.list.findIndex((notif) => notif.notificationId === id);
         const notifServerIndex = notifServer.trackedNotifications.values.findIndex((notif) => notif.id + root.idOffset === id);
         if (index !== -1) {
@@ -221,6 +224,7 @@ Singleton {
     }
 
     function timeoutNotification(id) {
+        IslandState.onNotificationFinished({ "notificationId": id });
         const index = root.list.findIndex((notif) => notif.notificationId === id);
         if (root.list[index] != null)
             root.list[index].popup = false;

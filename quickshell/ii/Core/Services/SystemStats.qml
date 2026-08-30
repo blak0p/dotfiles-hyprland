@@ -127,7 +127,7 @@ Item {
                     }
                     if (parsedData.storage) {
                         let storage = parsedData.storage;
-                        root.diskName = "Storage - " + storage.device;
+                        root.diskName = "Home";
                         root.diskUsage = storage.usage || 0;
                         root.diskSizeText = storage.used_gib.toFixed(1) + " / " + storage.total_gib.toFixed(1) + " GiB";
                     }

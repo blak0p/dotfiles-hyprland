@@ -20,9 +20,7 @@ BarButton {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: {
-                if (root.widget)
-                    root.widget.isOpen = !root.widget.isOpen;
-
+                AppState.activePopup = (AppState.activePopup === "dashboard" ? "" : "dashboard");
             }
         }
 
