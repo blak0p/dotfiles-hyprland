@@ -9,10 +9,8 @@ import qs.services
 Card {
     id: root
 
-    readonly property string pacmanUpdates: UpdateService.pacmanUpdatesCount
-    readonly property string aurUpdates: UpdateService.aurUpdatesCount
-    readonly property string flatpakUpdates: UpdateService.flatpakUpdatesCount
-    property bool hasUpdates: (parseInt(pacmanUpdates) > 0 || parseInt(aurUpdates) > 0 || parseInt(flatpakUpdates) > 0)
+    readonly property string cachyUpdates: UpdateService.cachyUpdatesCount
+    property bool hasUpdates: parseInt(cachyUpdates) > 0
     readonly property bool isChecking: UpdateService.isCheckingUpdates
     readonly property bool isUpdating: UpdateService.isSystemUpdating
 
@@ -52,7 +50,7 @@ Card {
 
                     anchors.centerIn: parent
                     text: {
-                        let total = (parseInt(root.pacmanUpdates) || 0) + (parseInt(root.aurUpdates) || 0) + (parseInt(root.flatpakUpdates) || 0);
+                        let total = parseInt(root.cachyUpdates) || 0;
                         return total + " NEW";
                     }
                     font.pixelSize: Constants.sizeXs
@@ -122,10 +120,10 @@ Card {
                             if (root.isChecking)
                                 return Translation.tr("Checking updates...");
 
-                            if (root.pacmanUpdates === "..." || root.aurUpdates === "..." || root.flatpakUpdates === "...")
+                            if (root.cachyUpdates === "...")
                                 return Translation.tr("Checking updates...");
 
-                            let total = (parseInt(root.pacmanUpdates) || 0) + (parseInt(root.aurUpdates) || 0) + (parseInt(root.flatpakUpdates) || 0);
+                            let total = parseInt(root.cachyUpdates) || 0;
                             return total > 0 ? total + " " + Translation.tr("packages pending") : Translation.tr("System up to date");
                         }
                         font.pixelSize: Constants.sizeSm
@@ -135,16 +133,12 @@ Card {
 
                     ThemedText {
                         text: {
-                            if (root.isUpdating || root.isChecking || root.pacmanUpdates === "...")
+                            if (root.isUpdating || root.isChecking || root.cachyUpdates === "...")
                                 return Translation.tr("Please wait");
 
-                            let total = (parseInt(root.pacmanUpdates) || 0) + (parseInt(root.aurUpdates) || 0) + (parseInt(root.flatpakUpdates) || 0);
+                            let total = parseInt(root.cachyUpdates) || 0;
                             if (total > 0) {
-                                let details = [];
-                                if ((parseInt(root.pacmanUpdates) || 0) > 0) details.push("Pacman: " + root.pacmanUpdates);
-                                if ((parseInt(root.aurUpdates) || 0) > 0) details.push("AUR: " + root.aurUpdates);
-                                if ((parseInt(root.flatpakUpdates) || 0) > 0) details.push("Flatpak: " + root.flatpakUpdates);
-                                return details.join(" | ");
+                                return "CachyOS: " + root.cachyUpdates;
                             }
 
                             return Translation.tr("All packages are currently up to date");
