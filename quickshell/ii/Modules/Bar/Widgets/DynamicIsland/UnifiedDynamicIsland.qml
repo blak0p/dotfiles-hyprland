@@ -215,7 +215,11 @@ Rectangle {
                 }
 
                 ThemedText {
-                    text: IslandState.activeNotification?.appName || "Notificación"
+                    text: {
+                        let app = IslandState.activeNotification?.appName || "Notificación";
+                        let count = IslandState.activeNotification?.appMessageCount || 1;
+                        return count > 1 ? (app + " (" + count + ")") : app;
+                    }
                     font.bold: true
                     font.pixelSize: Constants.sizeSm
                     color: Theme.muted

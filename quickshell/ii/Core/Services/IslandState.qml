@@ -31,63 +31,79 @@ QtObject {
         return false;
     }
 
-    function applyAdaptiveTimer(notif) {
-        if (!notif || !notif.timer) return;
-        if (queueCount > 0) {
-            notif.timer.interval = 2500;
-            if (notif.timer.running) notif.timer.restart();
-        } else {
-            notif.timer.interval = 7000;
-        }
-    }
-
     function pushNotification(notifData) {
         if (!notifData) return;
 
         // If game mode / DND is on and urgency is not critical, don't show toast
         if (notifData.isDnd && !isCritical(notifData)) return;
 
-        // Option 1: Present as compact in-bar toast
+        // 1. If nothing is active, activate directly as solitary (7s)
         if (!activeNotification || isClosed(activeNotification)) {
+            notifData.appMessageCount = 1;
+            notifData.isBurst = false;
             activeNotification = notifData;
             mode = root.modeCompactToast;
-            applyAdaptiveTimer(activeNotification);
+            if (activeNotification.timer) {
+                activeNotification.timer.interval = 7000;
+                if (activeNotification.timer.running) activeNotification.timer.restart();
+            }
             return;
         }
 
-        // If same notification already active, refresh
-        if (activeNotification === notifData || (activeNotification.notificationId && activeNotification.notificationId === notifData.notificationId)) {
+        // 2. Same App as Active Notification -> Coalesce in-place with burst timer (2.5s)
+        if (activeNotification.appName && notifData.appName && activeNotification.appName === notifData.appName) {
+            let currentCount = (activeNotification.appMessageCount || 1) + 1;
+            notifData.appMessageCount = currentCount;
+            notifData.isBurst = true;
             activeNotification = notifData;
-            applyAdaptiveTimer(activeNotification);
+            if (activeNotification.timer) {
+                activeNotification.timer.interval = 2500;
+                if (activeNotification.timer.running) activeNotification.timer.restart();
+            }
             return;
         }
 
-        // Critical notification immediately preempts current toast
+        // 3. Critical notification immediately preempts current toast
         if (isCritical(notifData)) {
             if (activeNotification && !isClosed(activeNotification)) {
                 let newQueue = [activeNotification].concat(queue.filter(n => n !== notifData && n !== activeNotification));
                 queue = newQueue;
                 queueCount = queue.length;
             }
+            notifData.appMessageCount = 1;
+            notifData.isBurst = false;
             activeNotification = notifData;
             mode = root.modeCompactToast;
-            applyAdaptiveTimer(activeNotification);
+            if (activeNotification.timer) {
+                activeNotification.timer.interval = 7000;
+                if (activeNotification.timer.running) activeNotification.timer.restart();
+            }
             return;
         }
 
-        // Otherwise enqueue
-        let exists = false;
+        // 4. Different app -> check if already exists in queue (coalesce inside queue)
+        let foundIdx = -1;
         for (let i = 0; i < queue.length; i++) {
-            if (queue[i] === notifData || (queue[i].notificationId && queue[i].notificationId === notifData.notificationId)) {
-                exists = true;
+            if (queue[i] && queue[i].appName && notifData.appName && queue[i].appName === notifData.appName) {
+                foundIdx = i;
                 break;
             }
         }
-        if (!exists) {
+
+        if (foundIdx !== -1) {
+            let qCount = (queue[foundIdx].appMessageCount || 1) + 1;
+            notifData.appMessageCount = qCount;
+            notifData.isBurst = true;
+            let newQueue = queue.slice(0);
+            newQueue[foundIdx] = notifData;
+            queue = newQueue;
+            queueCount = queue.length;
+        } else {
+            notifData.appMessageCount = 1;
+            notifData.isBurst = false;
             let newQueue = queue.concat([notifData]);
             queue = newQueue;
             queueCount = queue.length;
-            applyAdaptiveTimer(activeNotification);
         }
     }
 
@@ -148,7 +164,10 @@ QtObject {
         if (next) {
             activeNotification = next;
             mode = root.modeCompactToast;
-            applyAdaptiveTimer(activeNotification);
+            if (activeNotification.timer) {
+                activeNotification.timer.interval = (activeNotification.isBurst || activeNotification.appMessageCount > 1) ? 3000 : 7000;
+                if (activeNotification.timer.running) activeNotification.timer.restart();
+            }
         } else {
             activeNotification = null;
             mode = root.modeIdle;
