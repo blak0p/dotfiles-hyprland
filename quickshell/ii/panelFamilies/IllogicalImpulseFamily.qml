@@ -11,7 +11,6 @@ import qs.modules.ii.mediaControls
 import qs.modules.ii.notificationPopup
 import qs.modules.ii.onScreenDisplay
 import qs.modules.ii.onScreenKeyboard
-import qs.modules.ii.dynamicIsland
 import qs.modules.ii.polkit
 import qs.modules.ii.regionSelector
 import qs.modules.ii.screenCorners
@@ -34,7 +33,6 @@ Scope {
     PanelLoader { component: OnScreenDisplay {} }
     PanelLoader { component: OnScreenKeyboard {} }
     PanelLoader { component: Overlay {} }
-    PanelLoader { component: DynamicIslandLauncher {} }
     PanelLoader { component: Polkit {} }
     PanelLoader { component: RegionSelector {} }
     PanelLoader { component: ScreenCorners {} }
@@ -45,4 +43,7 @@ Scope {
     PanelLoader { extraCondition: Config.options.bar.vertical; component: VerticalBar {} }
     PanelLoader { component: WallpaperSelector {} }
 }
+
+
+
 

@@ -18,7 +18,8 @@ Item {
     property int preferredWidth: 0
     property int contentWidth: -1
     property int contentHeight: -1
-    readonly property int popupWidth: (contentWidth > 0 ? contentWidth : innerLayout.implicitWidth) + (contentPadding + cornerRadius) * 2
+    property bool floating: false
+    readonly property int popupWidth: (contentWidth > 0 ? contentWidth : innerLayout.implicitWidth) + (floating ? contentPadding * 2 : (contentPadding + cornerRadius) * 2)
     readonly property int popupHeight: (contentHeight > 0 ? contentHeight : innerLayout.implicitHeight) + contentPadding * 2
     property int targetHeight: preferredHeight > 0 ? preferredHeight : popupHeight
     property real smoothHeight: targetHeight
@@ -32,6 +33,7 @@ Item {
     readonly property int overshootHeadroom: 20
     property real openProgress: 0
     property real bounceProgress: 0
+    property bool autoCloseOnUnhover: true
 
     signal popupClosed()
 
@@ -216,6 +218,8 @@ Item {
 
         HoverHandler {
             onHoveredChanged: {
+                if (!root.autoCloseOnUnhover)
+                    return;
                 if (hovered)
                     autoCloseTimer.stop();
                 else if (root.isOpen)
@@ -229,6 +233,12 @@ Item {
 
         Shape {
             id: bg
+            visible: !root.floating
+
+            layer.enabled: true
+            layer.samples: 4
+            layer.smooth: true
+            preferredRendererType: Shape.CurveRenderer
 
             property color shapeColor: root.backgroundColor
             readonly property real r: root.cornerRadius
@@ -244,6 +254,7 @@ Item {
                 strokeWidth: 0
                 strokeColor: "transparent"
                 fillColor: bg.shapeColor
+                pathHints: ShapePath.PathSolid & ShapePath.PathNonIntersecting
                 startX: 0
                 startY: 0
 
@@ -301,12 +312,22 @@ Item {
 
         }
 
+        Rectangle {
+            id: floatingBg
+            visible: root.floating
+            anchors.fill: parent
+            radius: root.cornerRadius
+            color: root.backgroundColor
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.08)
+        }
+
         ColumnLayout {
             id: innerLayout
 
-            x: root.contentPadding + root.cornerRadius
+            x: root.floating ? root.contentPadding : (root.contentPadding + root.cornerRadius)
             y: root.contentPadding
-            width: smoothWidth - (root.contentPadding + root.cornerRadius) * 2
+            width: smoothWidth - (root.floating ? root.contentPadding * 2 : (root.contentPadding + root.cornerRadius) * 2)
         }
 
     }

@@ -10,12 +10,16 @@ import qs.modules.common
 import qs.Modules.Bar
 import qs.Modules.Bar.Widgets.MainPanel
 import qs.Modules.Bar.Widgets.SystemTray
+import qs.Modules.Bar.Widgets.Launcher
 import qs.Modules.PackageManager
 import qs.Modules.PowerMenu
 import qs.Core.Components
+import qs.Core.Services
+
 import qs.Services.System
 
 // Minflair-style bar + dashboard, grafted onto the End-4 ii shell.
+
 Scope {
     id: root
 
@@ -66,8 +70,12 @@ Scope {
                     target: barStrip
                     function onClockHoveredChanged() {
                         surface.clockHovered = barStrip.clockHovered;
-                        if (surface.clockHovered)
+                        if (surface.clockHovered) {
+                            if (AppState.activePopup === "launcher") {
+                                AppState.activePopup = "dashboard";
+                            }
                             mainPanel.isOpen = true;
+                        }
                     }
                 }
 
@@ -78,7 +86,11 @@ Scope {
                     interval: 250
                     repeat: true
                     running: surface.clockHovered
-                    onTriggered: mainPanel.isOpen = true
+                    onTriggered: {
+                        if (AppState.activePopup !== "launcher") {
+                            mainPanel.isOpen = true;
+                        }
+                    }
                 }
 
                 // Bar window
@@ -110,14 +122,15 @@ Scope {
                     }
                 }
 
-                // Popup window (dashboard + tray menus)
+                // Popup window (dashboard + launcher + tray menus)
                 PanelWindow {
                     id: popupSurface
 
                     WlrLayershell.layer: WlrLayer.Overlay
                     WlrLayershell.exclusionMode: ExclusionMode.Ignore
+                    WlrLayershell.keyboardFocus: launcherPanel._visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
                     color: "transparent"
-                    focusable: false
+                    focusable: launcherPanel._visible
                     screen: surfaceLoader.modelData
 
                     anchors {
@@ -132,6 +145,30 @@ Scope {
                         popupId: "dashboard"
                         x: (popupSurface.width - implicitWidth) / 2
                         y: surface.popupStartY
+                    }
+
+                    LauncherPanel {
+                        id: launcherPanel
+                        popupId: "launcher"
+                        x: (popupSurface.width - implicitWidth) / 2
+                        y: surface.popupStartY
+
+                        onIsOpenChanged: {
+                            if (isOpen) {
+                                GlobalFocusGrab.addDismissable(popupSurface);
+                            } else {
+                                GlobalFocusGrab.removeDismissable(popupSurface);
+                            }
+                        }
+                    }
+
+                    Connections {
+                        target: GlobalFocusGrab
+                        function onDismissed() {
+                            if (AppState.activePopup === "launcher") {
+                                AppState.activePopup = "";
+                            }
+                        }
                     }
 
                     SystemTray {
@@ -197,6 +234,13 @@ Scope {
                             y: mainPanel.y
                             width: mainPanel._visible ? mainPanel.implicitWidth : 0
                             height: mainPanel._visible ? mainPanel.implicitHeight : 0
+                        }
+
+                        Region {
+                            x: launcherPanel.x
+                            y: launcherPanel.y
+                            width: launcherPanel._visible ? launcherPanel.implicitWidth : 0
+                            height: launcherPanel._visible ? launcherPanel.implicitHeight : 0
                         }
 
                         Region {
@@ -295,4 +339,73 @@ Scope {
             GlobalStates.barOpen = false;
         }
     }
+
+    IpcHandler {
+        target: "search"
+
+        function toggle(): void {
+            AppState.togglePopup("launcher");
+        }
+        function open(): void {
+            AppState.openPopup("launcher");
+        }
+        function close(): void {
+            if (AppState.activePopup === "launcher")
+                AppState.activePopup = "";
+        }
+        function workspacesToggle(): void {
+            AppState.togglePopup("launcher");
+        }
+        function toggleReleaseInterrupt(): void {
+            GlobalStates.superReleaseMightTrigger = false;
+        }
+        function clipboardToggle(): void {
+            AppState.togglePopup("launcher");
+        }
+    }
+
+    GlobalShortcut {
+        name: "searchToggle"
+        description: "Toggles launcher on press"
+        onPressed: AppState.togglePopup("launcher")
+    }
+
+    GlobalShortcut {
+        name: "searchToggleRelease"
+        description: "Toggles launcher on release"
+        onPressed: {
+            GlobalStates.superReleaseMightTrigger = true;
+        }
+        onReleased: {
+            if (!GlobalStates.superReleaseMightTrigger) {
+                GlobalStates.superReleaseMightTrigger = true;
+                return;
+            }
+            AppState.togglePopup("launcher");
+        }
+    }
+
+    GlobalShortcut {
+        name: "searchToggleReleaseInterrupt"
+        description: "Interrupts search toggle on release"
+        onPressed: {
+            GlobalStates.superReleaseMightTrigger = false;
+        }
+    }
+
+    GlobalShortcut {
+        name: "overviewWorkspacesClose"
+        description: "Closes launcher on press"
+        onPressed: {
+            if (AppState.activePopup === "launcher")
+                AppState.activePopup = "";
+        }
+    }
+
+    GlobalShortcut {
+        name: "overviewWorkspacesToggle"
+        description: "Toggles launcher on press"
+        onPressed: AppState.togglePopup("launcher")
+    }
 }
+

@@ -7,7 +7,6 @@ import Quickshell.Wayland
 import qs.Core
 import qs.Core.Components
 import qs.Core.Windows
-import qs.Modules.Bar.Widgets.MainPanel.ActivityWatch as MainPanelActivityWatch
 import qs.Modules.Bar.Widgets.MainPanel.Dashboard as MainPanelDashboard
 import qs.Modules.Bar.Widgets.MainPanel.Performance as MainPanelPerformance
 import qs.services
@@ -43,7 +42,7 @@ TopPopup {
             else if (mainPanelPopup.activeTab === 1)
                 return performanceTab.implicitWidth;
             else if (mainPanelPopup.activeTab === 2)
-                return activityWatchTab.implicitWidth;
+                return codexTab.implicitWidth;
             return 800;
         }
         spacing: Constants.sizeLg
@@ -71,15 +70,9 @@ TopPopup {
             }
 
             ThemedTab {
-                glyph: mainPanelPopup.activeTab === 2 ? "leaderboard-filled" : "leaderboard"
-                text: Translation.tr("Activity")
-                value: 2
-            }
-
-            ThemedTab {
                 glyph: "code"
                 text: Translation.tr("Codex")
-                value: 3
+                value: 2
             }
 
         }
@@ -96,8 +89,6 @@ TopPopup {
                 else if (mainPanelPopup.activeTab === 1)
                     h = performanceTab.implicitHeight;
                 else if (mainPanelPopup.activeTab === 2)
-                    h = activityWatchTab.implicitHeight;
-                else if (mainPanelPopup.activeTab === 3)
                     h = codexTab.implicitHeight;
                 return h > 0 ? h : 330;
             }
@@ -127,24 +118,13 @@ TopPopup {
             }
 
             TabItem {
-                id: activityWatchTab
+                id: codexTab
 
                 index: 2
 
-                MainPanelActivityWatch.ActivityWatch {
-                    anchors.fill: parent
-                }
-
-            }
-
-            TabItem {
-                id: codexTab
-
-                index: 3
-
                 MainPanelDashboard.CodexBarCard {
                     anchors.fill: parent
-                    active: mainPanelPopup.activeTab === 3
+                    active: mainPanelPopup.activeTab === 2
                 }
             }
 
