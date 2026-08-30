@@ -245,14 +245,14 @@ Rectangle {
                     Layout.fillWidth: true
                 }
 
-                // Queue Badge (+N)
+                // Queue Badge (+N) - Click to skip to next
                 Rectangle {
                     visible: IslandState.queueCount > 0
-                    Layout.preferredHeight: 18
+                    Layout.preferredHeight: 20
                     Layout.alignment: Qt.AlignVCenter
-                    implicitWidth: badgeText.implicitWidth + 8
-                    radius: 9
-                    color: Theme.bgTertiary
+                    implicitWidth: badgeText.implicitWidth + 12
+                    radius: 10
+                    color: badgeArea.containsMouse ? Theme.bgSecondary : Theme.bgTertiary
 
                     ThemedText {
                         id: badgeText
@@ -260,7 +260,26 @@ Rectangle {
                         text: "+" + IslandState.queueCount
                         font.pixelSize: Constants.size3Xs
                         font.bold: true
+                        color: Theme.fg
                     }
+
+                    MouseArea {
+                        id: badgeArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: IslandState.dismissActive()
+                    }
+                }
+
+                // Clear All button when queue has items
+                SvgIconButton {
+                    visible: IslandState.queueCount > 0
+                    icon: "trash"
+                    iconSize: 12
+                    flat: true
+                    Layout.alignment: Qt.AlignVCenter
+                    onClicked: IslandState.dismissAll()
                 }
 
                 SvgIconButton {

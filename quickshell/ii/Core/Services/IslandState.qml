@@ -31,6 +31,16 @@ QtObject {
         return false;
     }
 
+    function applyAdaptiveTimer(notif) {
+        if (!notif || !notif.timer) return;
+        if (queueCount > 0) {
+            notif.timer.interval = 2500;
+            if (notif.timer.running) notif.timer.restart();
+        } else {
+            notif.timer.interval = 7000;
+        }
+    }
+
     function pushNotification(notifData) {
         if (!notifData) return;
 
@@ -41,12 +51,14 @@ QtObject {
         if (!activeNotification || isClosed(activeNotification)) {
             activeNotification = notifData;
             mode = root.modeCompactToast;
+            applyAdaptiveTimer(activeNotification);
             return;
         }
 
         // If same notification already active, refresh
         if (activeNotification === notifData || (activeNotification.notificationId && activeNotification.notificationId === notifData.notificationId)) {
             activeNotification = notifData;
+            applyAdaptiveTimer(activeNotification);
             return;
         }
 
@@ -59,6 +71,7 @@ QtObject {
             }
             activeNotification = notifData;
             mode = root.modeCompactToast;
+            applyAdaptiveTimer(activeNotification);
             return;
         }
 
@@ -74,6 +87,7 @@ QtObject {
             let newQueue = queue.concat([notifData]);
             queue = newQueue;
             queueCount = queue.length;
+            applyAdaptiveTimer(activeNotification);
         }
     }
 
@@ -134,6 +148,7 @@ QtObject {
         if (next) {
             activeNotification = next;
             mode = root.modeCompactToast;
+            applyAdaptiveTimer(activeNotification);
         } else {
             activeNotification = null;
             mode = root.modeIdle;
@@ -141,6 +156,26 @@ QtObject {
                 AppState.activePopup = "";
             }
         }
+    }
+
+    function dismissAll() {
+        if (typeof Notifications !== "undefined" && typeof Notifications.discardAllNotifications === "function") {
+            Notifications.discardAllNotifications();
+        }
+        queue = [];
+        queueCount = 0;
+        if (activeNotification) {
+            if (typeof activeNotification.close === "function") {
+                activeNotification.close();
+            } else if (activeNotification.notification && typeof activeNotification.notification.dismiss === "function") {
+                activeNotification.notification.dismiss();
+            }
+            if (activeNotification.timer && typeof activeNotification.timer.stop === "function") {
+                activeNotification.timer.stop();
+            }
+        }
+        activeNotification = null;
+        mode = root.modeIdle;
     }
 
     function expand() {
