@@ -18,7 +18,7 @@ Rectangle {
     property string currentMode: {
         if (AppState.activePopup === "launcher") return "launcher";
         if (AppState.activePopup === "dashboard") return "dashboard";
-        if (IslandState.activeNotification !== null && !IslandState.isClosed(IslandState.activeNotification)) return "notif";
+        if (IslandState.mode !== IslandState.modeIdle && IslandState.activeNotification !== null) return "notif";
         return "clock";
     }
 

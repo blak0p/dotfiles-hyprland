@@ -35,6 +35,9 @@ Singleton {
         property double time
         property string urgency: notification?.urgency.toString() ?? "normal"
         property Timer timer
+        property int appMessageCount: 1
+        property bool isBurst: false
+        property real progress: 1.0
 
         onNotificationChanged: {
             if (notification === null) {

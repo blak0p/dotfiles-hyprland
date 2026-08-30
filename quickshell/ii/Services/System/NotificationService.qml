@@ -7,7 +7,7 @@ import qs.Core.Services
 Item {
     id: root
 
-    property alias server: notificationServer
+    property var server: null
     property alias activeList: activeListModel
     property alias historyList: historyListModel
     property bool dndEnabled: false
@@ -321,34 +321,6 @@ Item {
         id: historyListModel
     }
 
-    NotificationServer {
-        id: notificationServer
-
-        keepOnReload: false
-        imageSupported: true
-        actionsSupported: true
-        onNotification: (notification) => {
-            if (notification.tracked)
-                return ;
-
-            notification.tracked = true;
-            notification.closed.connect((reason) => {
-                let nd = root.notificationObjects[notification.id];
-                if (nd && nd.notification !== notification)
-                    return ;
-
-                if (nd)
-                    nd.popup = false;
-
-            });
-            notification.summaryChanged.connect(() => {
-                root.handleNotificationUpdate(notification);
-            });
-            notification.bodyChanged.connect(() => {
-                root.handleNotificationUpdate(notification);
-            });
-            root.handleNotificationUpdate(notification);
-        }
-    }
+    // Notifications are handled centrally by the Notifications singleton and IslandState
 
 }
