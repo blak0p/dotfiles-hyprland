@@ -21,17 +21,23 @@ Scope {
     readonly property int barTopMargin: 8
     readonly property int barHeight: 48
 
-    // Collapsed dimensions (matching the clock capsule in the bar)
-    readonly property int collapsedWidth: 190
-    readonly property int collapsedHeight: 36
-    readonly property int collapsedY: barTopMargin + Math.round((barHeight - collapsedHeight) / 2) // 14px
-    readonly property int collapsedRadius: 18
+    // Collapsed: exact dimensions and position of the bar's center clock capsule
+    readonly property int collapsedWidth: 180
+    readonly property int collapsedHeight: barHeight // 48px
+    readonly property int collapsedY: barTopMargin   // 8px (flush with the bar)
+    readonly property int collapsedRadius: 24        // Same radius as the bar
 
-    // Expanded dimensions (Dynamic Island open)
-    readonly property int expandedWidth: 640
-    readonly property int expandedHeight: LauncherSearch.query !== "" ? Math.min(520, Math.max(180, 110 + Math.min(searchModel.count, 7) * 56)) : 480
-    readonly property int expandedY: barTopMargin
-    readonly property int expandedRadius: 26
+    // Expanded: organic island dropping downwards from the bar
+    readonly property int expandedWidth: 660
+    readonly property int expandedHeight: {
+        if (LauncherSearch.query !== "") {
+            const count = Math.min(searchModel.count, 6);
+            return Math.max(160, 110 + count * 58);
+        }
+        return 490;
+    }
+    readonly property int expandedY: barTopMargin   // 8px (anchored directly to top of bar)
+    readonly property int expandedRadius: 28
 
     property bool isIslandOpen: GlobalStates.overviewOpen
     property string searchQuery: ""
@@ -80,7 +86,7 @@ Scope {
     PanelWindow {
         id: islandWindow
 
-        visible: GlobalStates.overviewOpen || islandCard.opacity > 0.01
+        visible: GlobalStates.overviewOpen || islandCard.height > root.collapsedHeight + 2
         WlrLayershell.namespace: "quickshell:dynamic-island-launcher"
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: GlobalStates.overviewOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
@@ -118,59 +124,53 @@ Scope {
             }
         }
 
-        // Morphing Dynamic Island Capsule
+        // Morphing Dynamic Island Capsule (Hernia fluida desde la barra)
         Rectangle {
             id: islandCard
 
             anchors.horizontalCenter: parent.horizontalCenter
-            y: root.isIslandOpen ? root.expandedY : root.collapsedY
+            y: root.collapsedY
             width: root.isIslandOpen ? root.expandedWidth : root.collapsedWidth
             height: root.isIslandOpen ? root.expandedHeight : root.collapsedHeight
             radius: root.isIslandOpen ? root.expandedRadius : root.collapsedRadius
             color: Theme.bg
-            border.color: root.isIslandOpen ? Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.16) : "transparent"
-            border.width: 1
+            border.color: root.isIslandOpen ? Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.18) : "transparent"
+            border.width: root.isIslandOpen ? 1 : 0
             opacity: root.isIslandOpen ? 1.0 : 0.0
             clip: true
 
+            // Fluid Dynamic Island Spring Animations
             Behavior on width {
                 NumberAnimation {
-                    duration: (typeof HyprlandService !== "undefined" && HyprlandService.enableAnimations) ? 320 : 0
+                    duration: (typeof HyprlandService !== "undefined" && HyprlandService.enableAnimations) ? 340 : 0
                     easing.type: Easing.OutBack
-                    easing.overshoot: 1.12
+                    easing.overshoot: 1.15
                 }
             }
 
             Behavior on height {
                 NumberAnimation {
-                    duration: (typeof HyprlandService !== "undefined" && HyprlandService.enableAnimations) ? 300 : 0
-                    easing.type: Easing.OutCubic
-                }
-            }
-
-            Behavior on y {
-                NumberAnimation {
-                    duration: (typeof HyprlandService !== "undefined" && HyprlandService.enableAnimations) ? 300 : 0
+                    duration: (typeof HyprlandService !== "undefined" && HyprlandService.enableAnimations) ? 360 : 0
                     easing.type: Easing.OutBack
-                    easing.overshoot: 1.05
+                    easing.overshoot: 1.12
                 }
             }
 
             Behavior on radius {
                 NumberAnimation {
-                    duration: (typeof HyprlandService !== "undefined" && HyprlandService.enableAnimations) ? 260 : 0
+                    duration: (typeof HyprlandService !== "undefined" && HyprlandService.enableAnimations) ? 280 : 0
                     easing.type: Easing.OutCubic
                 }
             }
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: (typeof HyprlandService !== "undefined" && HyprlandService.enableAnimations) ? 180 : 0
+                    duration: (typeof HyprlandService !== "undefined" && HyprlandService.enableAnimations) ? 200 : 0
                     easing.type: Easing.OutQuad
                 }
             }
 
-            // Keyboard navigation inside island
+            // Keyboard navigation
             Keys.onPressed: (event) => {
                 if (event.key === Qt.Key_Escape) {
                     root.closeIsland();
@@ -220,28 +220,33 @@ Scope {
                 id: islandLayout
 
                 anchors.fill: parent
-                anchors.margins: 14
-                spacing: 12
-                opacity: root.isIslandOpen ? 1.0 : 0.0
+                anchors.topMargin: 8
+                anchors.bottomMargin: 14
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 10
+                opacity: (root.isIslandOpen && islandCard.height > 120) ? 1.0 : 0.0
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: (typeof HyprlandService !== "undefined" && HyprlandService.enableAnimations) ? 200 : 0
-                        easing.type: Easing.OutQuad
+                        duration: (typeof HyprlandService !== "undefined" && HyprlandService.enableAnimations) ? 220 : 0
+                        easing.type: Easing.OutCubic
                     }
                 }
 
-                // Apple-style Island Notch indicator
+                // Apple-style Island Pill handle
                 Rectangle {
                     Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: 38
+                    Layout.preferredWidth: 36
                     Layout.preferredHeight: 4
                     radius: 2
-                    color: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.22)
+                    color: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.25)
                 }
 
-                // Search Bar Row
+                // Animated Search Bar Row
                 Rectangle {
+                    id: searchBarContainer
+
                     Layout.fillWidth: true
                     Layout.preferredHeight: 44
                     radius: 22
@@ -261,9 +266,13 @@ Scope {
 
                         SvgIcon {
                             icon: "search"
-                            iconColor: Theme.muted
+                            iconColor: searchInput.text !== "" ? Theme.accent : Theme.muted
                             iconSize: 18
                             flat: true
+
+                            Behavior on iconColor {
+                                ColorAnimation { duration: 150 }
+                            }
                         }
 
                         TextField {
@@ -271,7 +280,7 @@ Scope {
 
                             Layout.fillWidth: true
                             focus: true
-                            placeholderText: "Buscar aplicaciones o comandos..."
+                            placeholderText: "Buscar aplicaciones, acciones o cálculos..."
                             placeholderTextColor: Theme.muted
                             font.family: Constants.fontFamily
                             font.pixelSize: Constants.sizeMd
@@ -337,7 +346,12 @@ Scope {
                     ColumnLayout {
                         anchors.fill: parent
                         visible: root.searchQuery === ""
-                        spacing: 10
+                        spacing: 8
+                        opacity: root.searchQuery === "" ? 1.0 : 0.0
+
+                        Behavior on opacity {
+                            NumberAnimation { duration: 180; easing.type: Easing.OutQuad }
+                        }
 
                         // Section Title
                         RowLayout {
@@ -350,7 +364,7 @@ Scope {
                             }
                             Item { Layout.fillWidth: true }
                             ThemedText {
-                                text: `${AppSearch.list.length} instaladas`
+                                text: `${AppSearch.list.length} disponibles`
                                 font.pixelSize: 11
                                 color: Theme.muted
                             }
@@ -362,10 +376,20 @@ Scope {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             cellWidth: Math.floor(width / 4)
-                            cellHeight: 88
+                            cellHeight: 86
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
                             model: AppSearch.list
+
+                            populate: Transition {
+                                NumberAnimation {
+                                    properties: "opacity,scale"
+                                    from: 0
+                                    to: 1
+                                    duration: 220
+                                    easing.type: Easing.OutBack
+                                }
+                            }
 
                             delegate: Item {
                                 required property var modelData
@@ -378,33 +402,43 @@ Scope {
                                     id: appCard
 
                                     anchors.fill: parent
-                                    anchors.margins: 4
+                                    anchors.margins: 3
                                     radius: 14
                                     color: (root.selectedIndex === index || appMouse.containsMouse) ? Theme.bgSecondary : "transparent"
                                     border.color: (root.selectedIndex === index) ? Theme.accent : "transparent"
                                     border.width: 1
+                                    scale: appMouse.pressed ? 0.95 : ((root.selectedIndex === index || appMouse.containsMouse) ? 1.04 : 1.0)
 
                                     Behavior on color {
                                         ColorAnimation { duration: 120 }
                                     }
 
+                                    Behavior on scale {
+                                        NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+                                    }
+
                                     ColumnLayout {
                                         anchors.centerIn: parent
-                                        spacing: 6
+                                        spacing: 5
 
                                         Image {
                                             Layout.alignment: Qt.AlignHCenter
-                                            Layout.preferredWidth: 36
-                                            Layout.preferredHeight: 36
+                                            Layout.preferredWidth: 34
+                                            Layout.preferredHeight: 34
                                             source: root.resolveIcon(modelData.icon)
-                                            sourceSize.width: 36
-                                            sourceSize.height: 36
+                                            sourceSize.width: 34
+                                            sourceSize.height: 34
                                             smooth: true
+                                            onStatusChanged: {
+                                                if (status === Image.Error && source !== Quickshell.iconPath("application-x-executable", true)) {
+                                                    source = Quickshell.iconPath("application-x-executable", true);
+                                                }
+                                            }
                                         }
 
                                         ThemedText {
                                             Layout.alignment: Qt.AlignHCenter
-                                            Layout.maximumWidth: appCard.width - 12
+                                            Layout.maximumWidth: appCard.width - 10
                                             text: modelData.name
                                             font.pixelSize: 11
                                             font.bold: root.selectedIndex === index
@@ -425,7 +459,7 @@ Scope {
                         }
                     }
 
-                    // MODE 2: Search Results List (when query is active)
+                    // MODE 2: Animated Search Results List (when query is active)
                     ListView {
                         id: searchListView
 
@@ -436,6 +470,17 @@ Scope {
                         boundsBehavior: Flickable.StopAtBounds
                         model: searchModel
 
+                        add: Transition {
+                            ParallelAnimation {
+                                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 180; easing.type: Easing.OutCubic }
+                                NumberAnimation { property: "y"; from: 20; duration: 180; easing.type: Easing.OutBack }
+                            }
+                        }
+
+                        displaced: Transition {
+                            NumberAnimation { properties: "y"; duration: 140; easing.type: Easing.OutCubic }
+                        }
+
                         delegate: Rectangle {
                             required property string name
                             required property string category
@@ -445,13 +490,18 @@ Scope {
 
                             width: searchListView.width
                             height: 52
-                            radius: 12
+                            radius: 14
                             color: (root.selectedIndex === index || searchItemMouse.containsMouse) ? Theme.bgSecondary : "transparent"
                             border.color: (root.selectedIndex === index) ? Theme.accent : "transparent"
                             border.width: 1
+                            scale: searchItemMouse.pressed ? 0.98 : ((root.selectedIndex === index || searchItemMouse.containsMouse) ? 1.01 : 1.0)
 
                             Behavior on color {
                                 ColorAnimation { duration: 120 }
+                            }
+
+                            Behavior on scale {
+                                NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
                             }
 
                             RowLayout {
@@ -467,6 +517,11 @@ Scope {
                                     sourceSize.width: 32
                                     sourceSize.height: 32
                                     smooth: true
+                                    onStatusChanged: {
+                                        if (status === Image.Error && source !== Quickshell.iconPath("application-x-executable", true)) {
+                                            source = Quickshell.iconPath("application-x-executable", true);
+                                        }
+                                    }
                                 }
 
                                 ColumnLayout {
