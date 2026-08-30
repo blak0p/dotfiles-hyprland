@@ -12,12 +12,13 @@ TopPopup {
 
     property var currentTrayItem: null
 
-    contentWidth: Math.max(250, Math.min(trayMenu.implicitWidth, 450))
-    contentHeight: Math.min(trayMenu.implicitHeight, 300)
+    preferredWidth: 260
+    preferredHeight: 320
+    contentWidth: 260
+    contentHeight: 320
     onIsOpenChanged: {
         if (!isOpen)
             trayMenu.resetToRoot();
-
     }
 
     TrayMenu {

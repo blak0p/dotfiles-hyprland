@@ -12,6 +12,7 @@ import qs.Modules.Bar.Widgets.MainPanel
 import qs.Modules.Bar.Widgets.SystemTray
 import qs.Modules.Bar.Widgets.Launcher
 import qs.Modules.Bar.Widgets.DynamicIsland
+import qs.Modules.ControlCenter
 import qs.Modules.PackageManager
 import qs.Modules.PowerMenu
 import qs.Core.Components
@@ -158,66 +159,17 @@ Scope {
                     Connections {
                         target: GlobalFocusGrab
                         function onDismissed() {
-                            if (AppState.activePopup === "launcher" || AppState.activePopup === "dashboard") {
+                            if (AppState.activePopup === "launcher" || AppState.activePopup === "dashboard" || AppState.activePopup === "controlCenter") {
                                 AppState.activePopup = "";
                             }
                         }
                     }
 
                     SystemTray {
-                        id: trayPopup0
-                        popupId: "systemTray_0"
-                        currentTrayItem: QSSysTray.SystemTray.items.values[0]
-                        x: popupSurface.width - implicitWidth - surface.barMarginSide
-                        y: surface.popupStartY
-                    }
-                    SystemTray {
-                        id: trayPopup1
-                        popupId: "systemTray_1"
-                        currentTrayItem: QSSysTray.SystemTray.items.values[1]
-                        x: popupSurface.width - implicitWidth - surface.barMarginSide
-                        y: surface.popupStartY
-                    }
-                    SystemTray {
-                        id: trayPopup2
-                        popupId: "systemTray_2"
-                        currentTrayItem: QSSysTray.SystemTray.items.values[2]
-                        x: popupSurface.width - implicitWidth - surface.barMarginSide
-                        y: surface.popupStartY
-                    }
-                    SystemTray {
-                        id: trayPopup3
-                        popupId: "systemTray_3"
-                        currentTrayItem: QSSysTray.SystemTray.items.values[3]
-                        x: popupSurface.width - implicitWidth - surface.barMarginSide
-                        y: surface.popupStartY
-                    }
-                    SystemTray {
-                        id: trayPopup4
-                        popupId: "systemTray_4"
-                        currentTrayItem: QSSysTray.SystemTray.items.values[4]
-                        x: popupSurface.width - implicitWidth - surface.barMarginSide
-                        y: surface.popupStartY
-                    }
-                    SystemTray {
-                        id: trayPopup5
-                        popupId: "systemTray_5"
-                        currentTrayItem: QSSysTray.SystemTray.items.values[5]
-                        x: popupSurface.width - implicitWidth - surface.barMarginSide
-                        y: surface.popupStartY
-                    }
-                    SystemTray {
-                        id: trayPopup6
-                        popupId: "systemTray_6"
-                        currentTrayItem: QSSysTray.SystemTray.items.values[6]
-                        x: popupSurface.width - implicitWidth - surface.barMarginSide
-                        y: surface.popupStartY
-                    }
-                    SystemTray {
-                        id: trayPopup7
-                        popupId: "systemTray_7"
-                        currentTrayItem: QSSysTray.SystemTray.items.values[7]
-                        x: popupSurface.width - implicitWidth - surface.barMarginSide
+                        id: trayPopup
+                        popupId: "systemTray"
+                        currentTrayItem: AppState.activeTrayItem
+                        x: Math.max(surface.barMarginSide, Math.min(AppState.activeTrayX - implicitWidth / 2, popupSurface.width - implicitWidth - surface.barMarginSide))
                         y: surface.popupStartY
                     }
 
@@ -230,52 +182,10 @@ Scope {
                         }
 
                         Region {
-                            x: trayPopup0.x
-                            y: trayPopup0.y
-                            width: trayPopup0._visible ? trayPopup0.implicitWidth : 0
-                            height: trayPopup0._visible ? trayPopup0.implicitHeight : 0
-                        }
-                        Region {
-                            x: trayPopup1.x
-                            y: trayPopup1.y
-                            width: trayPopup1._visible ? trayPopup1.implicitWidth : 0
-                            height: trayPopup1._visible ? trayPopup1.implicitHeight : 0
-                        }
-                        Region {
-                            x: trayPopup2.x
-                            y: trayPopup2.y
-                            width: trayPopup2._visible ? trayPopup2.implicitWidth : 0
-                            height: trayPopup2._visible ? trayPopup2.implicitHeight : 0
-                        }
-                        Region {
-                            x: trayPopup3.x
-                            y: trayPopup3.y
-                            width: trayPopup3._visible ? trayPopup3.implicitWidth : 0
-                            height: trayPopup3._visible ? trayPopup3.implicitHeight : 0
-                        }
-                        Region {
-                            x: trayPopup4.x
-                            y: trayPopup4.y
-                            width: trayPopup4._visible ? trayPopup4.implicitWidth : 0
-                            height: trayPopup4._visible ? trayPopup4.implicitHeight : 0
-                        }
-                        Region {
-                            x: trayPopup5.x
-                            y: trayPopup5.y
-                            width: trayPopup5._visible ? trayPopup5.implicitWidth : 0
-                            height: trayPopup5._visible ? trayPopup5.implicitHeight : 0
-                        }
-                        Region {
-                            x: trayPopup6.x
-                            y: trayPopup6.y
-                            width: trayPopup6._visible ? trayPopup6.implicitWidth : 0
-                            height: trayPopup6._visible ? trayPopup6.implicitHeight : 0
-                        }
-                        Region {
-                            x: trayPopup7.x
-                            y: trayPopup7.y
-                            width: trayPopup7._visible ? trayPopup7.implicitWidth : 0
-                            height: trayPopup7._visible ? trayPopup7.implicitHeight : 0
+                            x: trayPopup.x
+                            y: trayPopup.y
+                            width: trayPopup._visible ? trayPopup.implicitWidth : 0
+                            height: trayPopup._visible ? trayPopup.implicitHeight : 0
                         }
                     }
                 }

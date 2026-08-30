@@ -151,8 +151,12 @@ Item {
 
     Connections {
         function onActivePopupChanged() {
-            if (popupId !== "" && AppState.activePopup !== popupId)
-                root.isOpen = false;
+            if (popupId !== "") {
+                if (AppState.activePopup === popupId)
+                    root.isOpen = true;
+                else
+                    root.isOpen = false;
+            }
         }
 
         function onTogglePopup(id) {

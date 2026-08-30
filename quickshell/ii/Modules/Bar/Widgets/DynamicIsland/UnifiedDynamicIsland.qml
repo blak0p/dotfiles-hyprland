@@ -14,12 +14,14 @@ import "../../Components" as BarComponents
 import "../SystemTray" as STray
 import qs.Modules.Bar.Widgets.MainPanel.Dashboard as MainPanelDashboard
 import qs.Modules.Bar.Widgets.MainPanel.Performance as MainPanelPerformance
+import qs.Modules.ControlCenter as CC
 
 Rectangle {
     id: root
 
     property string currentMode: {
         if (AppState.activePopup === "launcher") return "launcher";
+        if (AppState.activePopup === "controlCenter") return "controlCenter";
         if (AppState.activePopup === "dashboard") return "dashboard";
         if (IslandState.mode !== IslandState.modeIdle && IslandState.activeNotification !== null) return "notif";
         return "clock";
@@ -27,7 +29,7 @@ Rectangle {
 
     readonly property bool isNotifActive: currentMode === "notif"
     readonly property bool isCritical: isNotifActive && IslandState.isCritical(IslandState.activeNotification)
-    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard" || currentMode === "notif"
+    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard" || currentMode === "controlCenter" || currentMode === "notif"
 
     width: implicitWidth
     height: implicitHeight
@@ -40,8 +42,9 @@ Rectangle {
     readonly property int idleWingWidth: Math.max(workspacesWidget.implicitWidth, rightControlsRow.implicitWidth)
 
     implicitWidth: {
+        if (currentMode === "controlCenter") return 620;
         if (currentMode === "dashboard") {
-            if (dashboardActiveTab === 1) return 600;
+            if (dashboardActiveTab === 1) return 600; // Rendimiento
             return 680;
         }
         if (currentMode === "launcher") return searchQuery !== "" ? 720 : 480;
@@ -50,10 +53,11 @@ Rectangle {
     }
 
     implicitHeight: {
+        if (currentMode === "controlCenter") return 570;
         if (currentMode === "dashboard") {
-            if (dashboardActiveTab === 0) return 590;
-            if (dashboardActiveTab === 1) return 410;
-            if (dashboardActiveTab === 2) return 500;
+            if (dashboardActiveTab === 0) return 590; // Dashboard
+            if (dashboardActiveTab === 1) return 410; // Rendimiento
+            if (dashboardActiveTab === 2) return 500; // Codex
             return 580;
         }
         if (currentMode === "launcher") {
@@ -118,7 +122,7 @@ Rectangle {
     }
 
     // ==========================================
-    // 1. ALL-IN-ONE IDLE VIEW (Symmetrical 3-Slot Layout with Absolute Centered Clock)
+    // 1. ALL-IN-ONE IDLE VIEW (Symmetrical 3-Slot Layout)
     // ==========================================
     Item {
         id: idleContainer
@@ -130,7 +134,7 @@ Rectangle {
         Behavior on opacity { NumberAnimation { duration: 180 } }
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
-        // CENTER SLOT: Clock (Absolute mathematical center of the capsule)
+        // CENTER SLOT: Clock
         Item {
             id: clockArea
             anchors.centerIn: parent
@@ -204,7 +208,7 @@ Rectangle {
             anchors.leftMargin: 10
         }
 
-        // LEFT WING: Workspaces (anchored to left)
+        // LEFT WING: Workspaces
         Item {
             anchors.left: parent.left
             anchors.leftMargin: 16
@@ -220,7 +224,7 @@ Rectangle {
             }
         }
 
-        // RIGHT WING: Controls + SysTray + Power (anchored to right)
+        // RIGHT WING: Controls + SysTray + Power
         Item {
             anchors.left: rightDivider.right
             anchors.leftMargin: 10
@@ -271,17 +275,7 @@ Rectangle {
 
                             Repeater {
                                 model: SystemTray.items
-                                delegate: STray.TrayItem {
-                                    trayItem: modelData
-                                    onClicked: (mouse) => {
-                                        if (mouse.button === Qt.RightButton) {
-                                            if (modelData.menu)
-                                                AppState.togglePopup("systemTray_" + index);
-                                            else if (modelData.secondaryActivate)
-                                                modelData.secondaryActivate();
-                                        }
-                                    }
-                                }
+                                delegate: STray.TrayItem {}
                             }
                         }
                     }
@@ -296,7 +290,7 @@ Rectangle {
     }
 
     // ==========================================
-    // 2. NOTIFICATION VIEW (Dynamic Island Dropdown Notch)
+    // 2. NOTIFICATION VIEW (Notch)
     // ==========================================
     Item {
         id: notifContainer
@@ -328,7 +322,6 @@ Rectangle {
             anchors.margins: 14
             spacing: 8
 
-            // Top Header: App Icon, App Name, Timestamp, Queue Badge, Dismiss
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Constants.sizeSm
@@ -376,11 +369,8 @@ Rectangle {
                     Layout.alignment: Qt.AlignVCenter
                 }
 
-                Item {
-                    Layout.fillWidth: true
-                }
+                Item { Layout.fillWidth: true }
 
-                // Queue Badge (+N) - Click to skip to next
                 Rectangle {
                     visible: IslandState.queueCount > 0
                     Layout.preferredHeight: 20
@@ -407,7 +397,6 @@ Rectangle {
                     }
                 }
 
-                // Clear All button when queue has items
                 SvgIconButton {
                     visible: IslandState.queueCount > 0
                     icon: "trash"
@@ -426,7 +415,6 @@ Rectangle {
                 }
             }
 
-            // Summary / Title
             ThemedText {
                 Layout.fillWidth: true
                 text: IslandState.activeNotification?.summary || ""
@@ -439,7 +427,6 @@ Rectangle {
                 visible: text !== ""
             }
 
-            // Body Message
             ThemedText {
                 Layout.fillWidth: true
                 text: IslandState.activeNotification?.body || ""
@@ -453,7 +440,6 @@ Rectangle {
                 onLinkActivated: (link) => Qt.openUrlExternally(link)
             }
 
-            // Image Attachment (if any)
             Image {
                 Layout.fillWidth: true
                 Layout.maximumHeight: 140
@@ -469,7 +455,6 @@ Rectangle {
                 asynchronous: true
             }
 
-            // Action Buttons Row (D-Bus notification actions)
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Constants.sizeSm
@@ -499,7 +484,6 @@ Rectangle {
                 }
             }
 
-            // Bottom Progress Bar
             Rectangle {
                 Layout.fillWidth: true
                 height: 2
@@ -513,7 +497,7 @@ Rectangle {
     }
 
     // ==========================================
-    // 3. LAUNCHER VIEW (Search Input & Results)
+    // 3. LAUNCHER VIEW
     // ==========================================
     property string searchQuery: ""
     property int selectedIndex: 0
@@ -573,7 +557,6 @@ Rectangle {
 
         Behavior on opacity { NumberAnimation { duration: 180 } }
 
-        // Top Search Row (48px)
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 48
@@ -611,11 +594,8 @@ Rectangle {
 
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Escape) {
-                        if (text !== "") {
-                            text = "";
-                        } else {
-                            AppState.activePopup = "";
-                        }
+                        if (text !== "") text = "";
+                        else AppState.activePopup = "";
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Down) {
                         if (searchListView.count > 0) {
@@ -633,9 +613,7 @@ Rectangle {
                 onAccepted: {
                     if (searchListView.count > 0 && root.selectedIndex >= 0 && root.selectedIndex < searchListView.count) {
                         const item = searchModel.get(root.selectedIndex);
-                        if (item && item.rawEntry) {
-                            launchEntry(item.rawEntry);
-                        }
+                        if (item && item.rawEntry) launchEntry(item.rawEntry);
                     }
                 }
             }
@@ -667,7 +645,6 @@ Rectangle {
             visible: root.searchQuery !== ""
         }
 
-        // Search Results List
         ListView {
             id: searchListView
             Layout.fillWidth: true
@@ -698,9 +675,7 @@ Rectangle {
                     hoverEnabled: true
                     onClicked: {
                         root.selectedIndex = itemDelegate.index;
-                        if (itemDelegate.rawEntry) {
-                            launchEntry(itemDelegate.rawEntry);
-                        }
+                        if (itemDelegate.rawEntry) launchEntry(itemDelegate.rawEntry);
                     }
                 }
 
@@ -742,7 +717,6 @@ Rectangle {
         }
     }
 
-    // Reset search input on launcher opened
     onCurrentModeChanged: {
         if (currentMode === "launcher") {
             searchQuery = "";
@@ -751,10 +725,26 @@ Rectangle {
                 searchInput.forceActiveFocus();
             });
         }
+        if (currentMode !== "controlCenter") {
+            controlCenterView.currentSubView = "home";
+        }
     }
 
     // ==========================================
-    // 4. DASHBOARD VIEW (Tabs & Performance/Codex)
+    // 4. CONTROL CENTER VIEW (Immediate, accessible & drilldown)
+    // ==========================================
+    CC.ControlCenterView {
+        id: controlCenterView
+        anchors.fill: parent
+        anchors.margins: 14
+        opacity: root.currentMode === "controlCenter" ? 1 : 0
+        visible: opacity > 0
+
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+    }
+
+    // ==========================================
+    // 5. DASHBOARD VIEW (When hovering/clicking the Clock)
     // ==========================================
     property int dashboardActiveTab: 0
 
@@ -763,30 +753,29 @@ Rectangle {
         anchors.fill: parent
         anchors.leftMargin: 18
         anchors.rightMargin: 18
-        anchors.topMargin: 4
+        anchors.topMargin: 6
         anchors.bottomMargin: 16
-        spacing: Constants.sizeMd
+        spacing: 12
         opacity: root.currentMode === "dashboard" ? 1 : 0
         visible: opacity > 0
 
         Behavior on opacity { NumberAnimation { duration: 180 } }
 
-        // Top Tabs Row (48px)
         ThemedTabs {
             id: headerRowItem
             Layout.fillWidth: true
-            Layout.preferredHeight: 48
+            Layout.preferredHeight: 44
             activeValue: root.dashboardActiveTab
             onTabSelected: (value) => root.dashboardActiveTab = value
 
             ThemedTab {
-                glyph: root.dashboardActiveTab === 0 ? "dashboard-filled" : "dashboard"
+                glyph: "dashboard"
                 text: "Dashboard"
                 value: 0
             }
 
             ThemedTab {
-                glyph: root.dashboardActiveTab === 1 ? "performance-filled" : "performance"
+                glyph: "performance"
                 text: "Rendimiento"
                 value: 1
             }
@@ -798,25 +787,21 @@ Rectangle {
             }
         }
 
-        // Tab Contents
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
             MainPanelDashboard.Dashboard {
-                id: dashboardTab
                 anchors.fill: parent
                 visible: root.dashboardActiveTab === 0
             }
 
             MainPanelPerformance.Performance {
-                id: performanceTab
                 anchors.fill: parent
                 visible: root.dashboardActiveTab === 1
             }
 
             MainPanelDashboard.CodexBarCard {
-                id: codexTab
                 anchors.fill: parent
                 visible: root.dashboardActiveTab === 2
                 active: root.currentMode === "dashboard" && visible
