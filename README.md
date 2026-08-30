@@ -1,247 +1,242 @@
-# dotfiles-hyprland
+# 🪟 dotfiles-hyprland
 
-Hyprland desktop environment config: `hypr/`, `waybar/`, `quickshell/`, `fuzzel/`, `gtk-3.0/`, `gtk-4.0/`, `xsettingsd/`, `systemd/`, `btop/`, `cava/`, plus the `wallfliper/` wallpaper daemon.
+<p align="center">
+  <img src="assets/hyprland-banner.png" alt="Hyprland Banner" width="100%" onerror="this.style.display='none'"/>
+</p>
+
+<p align="center">
+  <a href="https://hyprland.org"><img src="https://img.shields.io/badge/Hyprland-Wayland-blue?style=for-the-badge&logo=wayland&logoColor=white" alt="Hyprland"/></a>
+  <a href="https://quickshell.outfoxxed.me"><img src="https://img.shields.io/badge/Quickshell-QML-41CD52?style=for-the-badge&logo=qt&logoColor=white" alt="Quickshell"/></a>
+  <a href="https://www.lua.org"><img src="https://img.shields.io/badge/Lua-Config-000080?style=for-the-badge&logo=lua&logoColor=white" alt="Lua"/></a>
+  <a href="https://pyside.org"><img src="https://img.shields.io/badge/PySide6-Wallfliper-41cd52?style=for-the-badge&logo=qt&logoColor=white" alt="PySide6"/></a>
+</p>
+
+<p align="center">
+  A state-of-the-art, aesthetic, and modular <b>Hyprland</b> desktop environment powered by <b>Quickshell UI</b> (Unified Dynamic Island, Control Center, Multi-Distro Package Manager, Dashboard & Performance telemetry), <b>Wallfliper</b> video wallpapers, synchronized dual-monitor workspaces, and comprehensive screen intelligence utilities.
+</p>
 
 Part of the [dotfiles umbrella](https://github.com/blak0p/dotfiles).
 
-## Table of contents
+---
 
-- [What gets deployed](#what-gets-deployed)
-- [Install](#install)
-- [Update](#update)
-- [Uninstall / rollback](#uninstall--rollback)
-- [Keybindings (cheat sheet)](#keybindings-cheat-sheet)
-- [Customize](#customize)
-- [Troubleshooting](#troubleshooting)
-- [Dependencies](#dependencies)
+## 🎬 Desktop Showcase
+
+> [!TIP]
+> Recorded showcase clips and demos are stored in `assets/hyprland-demo.mp4` and `assets/hyprland-demo.gif`.
+
+![Hyprland Desktop Preview](assets/hyprland-preview.png)
 
 ---
 
-## What gets deployed
+## 📋 Table of Contents
 
-The installer creates symlinks from `~/.config/<name>` → top-level dirs in this repo.
+- [What Gets Deployed](#what-gets-deployed)
+- [Quickshell Desktop Architecture](#quickshell-desktop-architecture)
+- [Wallfliper & Dynamic Theming](#wallfliper--dynamic-theming)
+- [Key Features & Ergonomics](#key-features--ergonomics)
+- [Comprehensive Keybindings Matrix](#comprehensive-keybindings-matrix)
+- [Scripts & Backend Utilities](#scripts--backend-utilities)
+- [Installation & Setup](#installation--setup)
+- [Troubleshooting & Maintenance](#troubleshooting--maintenance)
 
-| Symlink | What it configures |
-|---|---|
-| `~/.config/hypr` | Hyprland WM — keybinds, monitors, animations, rules, hyprland.lua, hypridle, hyprlock |
-| `~/.config/waybar` | Status bar (alternative to Quickshell) |
-| `~/.config/quickshell` | Quickshell bar/shell — uses `ii` config, includes wallpaperSelector |
-| `~/.config/fuzzel` | App launcher (dmenu-style) |
-| `~/.config/gtk-3.0` | GTK 3 theme config |
-| `~/.config/gtk-4.0` | GTK 4 theme config |
-| `~/.config/xsettingsd` | X settings daemon (cursor, theme) |
-| `~/.config/systemd` | User systemd units (if any) |
-| `~/.config/btop` | System monitor TUI |
-| `~/.config/cava` | Audio visualizer |
+---
 
-Plus, the wallfliper daemon lives at `~/.config/hypr/wallfliper/` (nested under the `hypr` symlink, since the keybind calls it from there).
+## 📦 What Gets Deployed
 
-## Install
+The installer establishes clean symlinks from `~/.config/<name>` to this repository:
 
-### As part of the umbrella (recommended)
+| Symlink | Configures | Description |
+|---|---|---|
+| `~/.config/hypr` | Hyprland WM | Window manager, rules, monitors, custom Lua config, hypridle, hyprlock, Wallfliper |
+| `~/.config/quickshell` | Quickshell Desktop | Desktop bar surface, Unified Dynamic Island, Control Center, Overview, Package Manager |
+| `~/.config/waybar` | Waybar | Minimalist alternative Wayland status bar |
+| `~/.config/fuzzel` | Fuzzel | Minimalist Wayland app launcher and emoji selector |
+| `~/.config/gtk-3.0` / `gtk-4.0` | GTK Theming | Dark/Light M3 theme, icon themes, typography |
+| `~/.config/xsettingsd` | XSettings Daemon | DPI scaling and cursor theme synchronizer for XWayland |
+| `~/.config/btop` | btop | System telemetry TUI theme matching the desktop palette |
+| `~/.config/cava` | cava | Audio visualizer configuration for radial bar widgets |
+| `~/.config/qt6ct` | Qt6 Settings | Qt appearance and font synchronization |
 
+---
+
+## 🏗️ Quickshell Desktop Architecture
+
+The desktop UI is built upon **Quickshell (`ii` / Minflair Surface)**, featuring high-performance QML components with Spring animations:
+
+### 1. Unified Dynamic Island (`UnifiedDynamicIsland.qml`)
+Transitions fluidly across 4 operational modes:
+* **Idle / Clock Mode (`clock`)**: Compact pill displaying active workspace indicator, avatar, interactive clock (`HH:mm • ddd, d MMM`), and overflow Control Center button.
+* **Notification Notch Mode (`notif`)**: RichText popup with sender app icon, time elapsed, clickable URLs, image previews, inline interactive action buttons, and background progress bars. Pauses auto-dismissal timer on mouse hover.
+* **App Launcher Mode (`launcher`)**: Keyboard-driven fuzzy application finder (`Super + Space`) with category filters and vectorized application icons.
+* **Dashboard Dropdown (`dashboard`)**: Multi-tab drawer revealing:
+  * **Dashboard Tab**: Mini music player, motivational quote widget, and system update tracker.
+  * **Performance Tab (`Performance.qml`)**: Real-time telemetry cards:
+    * `CpuCard.qml`: Model name, load percentage, temperature, frequency (GHz), and active core count.
+    * `GpuCard.qml`: Dedicated/integrated GPU metrics (NVIDIA, AMD ROCm, Intel) with usage %, temperature, and VRAM.
+    * `MemoryCard.qml`: RAM & Swap memory allocation gauges.
+    * `StorageCard.qml`: Root and auxiliary disk usage.
+
+### 2. Mini Music Player with 36-Radial Cava Visualizer (`MiniMusicWidget.qml`)
+* Circular rotating album art synced with active MPRIS player.
+* 36 radial audio bars animated in real-time via Cava FIFO stream.
+* Full transport controls (Play/Pause, Previous/Next, Seekable Progress Bar).
+
+### 3. Control Center (`ControlCenterView.qml`)
+Houses 12 Quick Toggles and 7 specialized drawers:
+* **Quick Toggles**: Wi-Fi, Bluetooth, Night Light (`hyprsunset`), DND / Silent, Keep Awake (`hypridle` inhibitor), **Game Mode** (instant toggle disabling blur, animations, and gaps for competitive latency), Power Profile, Dark/Light theme switcher, Screen Snip, Color Picker (`hyprpicker`), EasyEffects DSP, and Cloudflare WARP (`1.1.1.1`).
+* **Sections**: Audio Mixer per-app, Bluetooth device manager, Wi-Fi credential portal, Notification History, Pomodoro Timer, To-Do list, and Calendar.
+
+### 4. Multi-Distro Package Manager (`PackageManager.qml`)
+* Native graphical package manager supporting **Arch / AUR** (`cachy-update`, `yay`, `paru`, `pacman`), **Fedora** (`dnf`), **Debian / Ubuntu** (`apt`), and **openSUSE** (`zypper`).
+* Full batch operations: Search, Update, Install, and Clean Remove.
+
+---
+
+## 🖼️ Wallfliper & Dynamic Theming
+
+Located at `hypr/wallfliper`, **Wallfliper** is a custom PySide6 / `wlr-layer-shell` wallpaper manager:
+* **Still Images & Looping Videos**: Renders images with `swww` and video loops with GPU-accelerated `mpvpaper`.
+* **Audition Mode (`Space`)**: Audition wallpapers directly on your live desktop while keeping the picker open.
+* **Live Video Previews**: Hovering video entries plays animated thumbnail clips right on the selector cards.
+* **Material You Sync (`switchwall.sh`)**: Automatic extraction of tonal palettes with Matugen, propagating live accent colors across Quickshell, Kitty, GTK, Qt, and Neovim.
+
+---
+
+## 🌟 Key Features & Ergonomics
+
+1. **Dual-Monitor Workspace Sync (`ws_both`)**:
+   * Pressing `Super + 1..9` seamlessly shifts workspaces on **both monitors in tandem** (`HDMI-A-2` & `DP-2`), eliminating multi-screen workspace desynchronization.
+2. **Workspace Rename Modal (`Super + R`)**:
+   * Spotlight/Rofi modal to rename the active workspace on the fly, instantly reflected on Quickshell's bar.
+3. **Responsive Window Borders**:
+   * 2px lavender accent border (`rgba(c2c1ffee)`) on active windows with subtle inactive borders (`rgba(47464f88)`).
+4. **Intelligent Screen Utilities**:
+   * **Region Snip (`Ctrl + Win + S` / `Super + Shift + S`)**: Saves to `~/Pictures/Screenshots/` and copies to clipboard.
+   * **OCR Extraction (`Super + Shift + X`)**: Optical character recognition via Tesseract to clipboard.
+   * **Google Lens Search (`Super + Shift + A`)**: Image search directly in browser.
+   * **Screen Translation (`Super + Shift + T`)**: Live overlay text translation.
+   * **Screen Recording (`Ctrl + Alt + R` / `Super + Alt + R`)**: Hardware-accelerated recording with audio support.
+   * **AI Primary Buffer Query (`Super + Shift + Alt + Right Click`)**: Instant local LLM (Ollama) summary of selected text.
+   * **VM Submap (`Super + Alt + F1`)**: Isolates input for virtual machines and remote desktop sessions.
+
+---
+
+## ⌨️ Comprehensive Keybindings Matrix
+
+### Window Management & Tiling
+| Shortcut | Action | Description |
+|---|---|---|
+| `Super + Return` / `Super + T` | Open Terminal | Launches Kitty terminal |
+| `Super + C` / `Super + Q` | Close Window | Closes the active window cleanly |
+| `Super + Shift + Alt + Q` | Force Kill | Destructive window termination (`hyprctl kill`) |
+| `Super + F` | Toggle Fullscreen | True fullscreen mode |
+| `Super + D` | Maximize Window | Maximizes window within borders |
+| `Super + Alt + Space` | Toggle Floating | Switches between tiled and floating mode |
+| `Super + P` | Pin Window | Pins window across all workspaces |
+| `Super + J` | Cycle Window Focus | Rotates focus across windows on the active monitor |
+| `Super + H` | Rotate Monitor Focus | Cycles focus between monitors |
+| `Super + Left` / `Super + Right` | Move Window to Monitor | Moves active window to the other monitor |
+| `Super + Shift + Arrows` | Move Window | Moves window position in layout |
+| `Super + ;` / `Super + '` | Split Ratio | Adjusts split ratio (-0.1 / +0.1) |
+| `Super + LMB Drag` | Move Floating | Drags floating window |
+| `Super + RMB Drag` | Resize Window | Resizes window with mouse |
+
+### Workspace Navigation
+| Shortcut | Action | Description |
+|---|---|---|
+| `Super + 1..9, 0` | **Sync Dual Workspaces** | Shifts workspace across both monitors simultaneously (`ws_both`) |
+| `Super + Alt + 1..9, 0` | Send to Workspace | Moves active window to workspace `1..9` |
+| `Ctrl + Super + H` / `Ctrl + Super + L` | Relative Workspace | Shifts to previous / next workspace (`r-1` / `r+1`) |
+| `Super + R` | **Rename Workspace** | Opens Rofi modal to rename active workspace |
+| `Super + Alt + S` | Send to Scratchpad | Sends window to special scratchpad |
+| `Super + Mouse 275` | Toggle Scratchpad | Reveals / hides special scratchpad |
+
+### Desktop Shell & UI
+| Shortcut | Action | Component |
+|---|---|---|
+| `Super + Space` | App Launcher | Dynamic Island search mode |
+| `Super + Tab` | Workspace Overview | Graphical overview grid with drag-and-drop |
+| `Super + N` | Control Center | Right sidebar with toggles & notifications |
+| `Super + V` | Clipboard History | Cliphist fuzzy selector with previews |
+| `Super + Period (.)` | Emoji Picker | Fuzzel emoji menu |
+| `Super + Slash (/)` | Cheatsheet | Interactive shortcut guide |
+| `Ctrl + Super + T` | Wallfliper | Wallpaper & video wallpaper picker |
+| `Ctrl + Super + R` | Restart Shell | Reloads Quickshell UI stack |
+| `Ctrl + Alt + Delete` | Power Menu | Lock, Suspend, Logout, Reboot, Shutdown |
+
+### Screen Utilities, Recording & AI
+| Shortcut | Action | Output / Destination |
+|---|---|---|
+| `Ctrl + Win + S` | **Region Snip** | `~/Pictures/Screenshots/` + Clipboard |
+| `Print` | **Fullscreen Snip** | Clipboard |
+| `Ctrl + Print` | **Fullscreen Snip & Save** | `~/Pictures/Screenshots/` + Clipboard |
+| `Super + Shift + X` | **OCR Text Extraction** | Clipboard |
+| `Super + Shift + A` | **Google Lens Search** | Default Web Browser |
+| `Super + Shift + T` | **Screen Translation** | Live Screen Overlay |
+| `Super + Shift + C` | **Color Picker** | Clipboard (`#HEX`) |
+| `Ctrl + Alt + R` | **Toggle Fullscreen Rec** | `~/Videos/` (`wf-recorder`) |
+| `Super + Alt + R` | **Toggle Region Rec** | `~/Videos/` (`wf-recorder`) |
+| `Super + Shift + Alt + R` | **Toggle Rec with Audio** | `~/Videos/` (PipeWire Monitor Audio) |
+| `Super + Shift + Alt + RMB` | **AI Text Query** | Ollama local LLM desktop notification |
+| `Super + Alt + F1` | **VM Submap Toggle** | Direct input passthrough for VMs |
+
+---
+
+## 🛠️ Scripts & Backend Utilities
+
+* **`quickshell/ii/scripts/colors/switchwall.sh`**: Computes Material 3 palettes from images via Matugen and syncs colors across applications.
+* **`quickshell/ii/scripts/videos/record.sh`**: Multi-monitor screen recorder wrapper for `wf-recorder`.
+* **`quickshell/ii/Scripts/search_packages.py`**: Multi-distro package query backend (Pacman, DNF, APT, Zypper).
+* **`quickshell/ii/Scripts/get_processes.py`**: High-efficiency CPU and GPU telemetric reader (`/proc` and vendor sysfs).
+* **`hypr/scripts/rename_workspace.sh`**: Rofi modal for Quickshell workspace state manipulation.
+* **`hypr/scripts/ai/primary-buffer-query.sh`**: Wayland primary buffer query dispatcher for local Ollama models.
+
+---
+
+## ⚡ Installation & Setup
+
+### Via the Umbrella Repository (Recommended)
 ```bash
 git clone --recurse-submodules https://github.com/blak0p/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 ./install.sh --hyprland
 ```
 
-Or for the full setup including shell/editor configs:
-
+### Standalone Installation
 ```bash
-./install.sh --all
-```
-
-### Standalone (without the umbrella)
-
-```bash
-git clone https://github.com/blak0p/dotfiles-hyprland.git
-cd dotfiles-hyprland
-./install.sh
-```
-
-### Install system dependencies first
-
-The `install.sh` only creates symlinks — it does NOT install packages. Use the bundled `install-deps.sh` for that:
-
-```bash
+git clone https://github.com/blak0p/dotfiles-hyprland.git ~/.config/dotfiles-hyprland
+cd ~/.config/dotfiles-hyprland
 bash deps/install-deps.sh
-```
-
-It auto-detects your package manager (`pacman`, `dnf`, or `apt`) and installs the right list. See [Dependencies](#dependencies).
-
-## Update
-
-```bash
-cd ~/dotfiles/dotfiles-hyprland
-git pull
-./install.sh   # idempotent — no-op for unchanged files
-```
-
-If running as part of the umbrella:
-
-```bash
-cd ~/dotfiles
-git submodule update --remote --merge dotfiles-hyprland
-```
-
-## Uninstall / rollback
-
-The installer backs up any existing real file before replacing it with a symlink. Backups go to:
-
-```
-~/.dotfiles-backup-YYYYMMDD-HHMMSS/<original-path>
-```
-
-To uninstall:
-
-```bash
-# Remove all the symlinks
-for s in hypr waybar quickshell fuzzel gtk-3.0 gtk-4.0 xsettingsd systemd btop cava; do
-    rm -f ~/.config/$s
-done
-
-# Restore from the latest backup (if you kept it)
-ls -td ~/.dotfiles-backup-* | head -1
-BACKUP=$(ls -td ~/.dotfiles-backup-* | head -1)
-cp -a "$BACKUP"/.config/. ~/.config/
-```
-
-## Keybindings (cheat sheet)
-
-The full keybind list lives in `hypr/hyprland/keybinds.lua` and `hypr/custom/keybinds.lua`. The custom one (overrides the end-4 defaults) has these highlights:
-
-| Combo | Action |
-|---|---|
-| `SUPER + Return` | Open terminal (kitty) |
-| `SUPER + Space` | Open app launcher (fuzzel) |
-| `SUPER + C` | Close window |
-| `SUPER + F` | Toggle fullscreen |
-| `SUPER + H` / `SUPER + L` | Focus left / right monitor |
-| `SUPER + left/right` | Move window to left/right monitor |
-| `SUPER + J` / `SUPER + K` | Cycle windows next / prev |
-| `SUPER + arrow keys` | Move window with arrows |
-| `SUPER + SHIFT + up` | Move window up |
-| `SUPER + Tab` | Toggle overview (Quickshell) |
-| `SUPER + V` | Toggle clipboard (Quickshell) |
-| `SUPER + Period` | Toggle emoji picker |
-| `SUPER + A` | Toggle left sidebar |
-| `SUPER + N` | Toggle right sidebar |
-| `SUPER + M` | Toggle media controls |
-| `SUPER + G` | Toggle widget overlay |
-| `SUPER + K` | Toggle on-screen keyboard |
-| `SUPER + SHIFT + J` | Toggle bar |
-| `SUPER + /` | Toggle cheatsheet |
-| `SUPER + SHIFT + ALT + /` | Show welcome screen |
-| `CTRL + SUPER + T` | Change wallpaper (wallfliper) |
-| `CTRL + SUPER + SHIFT + T` | Random wallpaper (Quickshell selector) |
-| `CTRL + SUPER + ALT + T` | Random wallpaper (alternative) |
-| `CTRL + SUPER + D` | Toggle light/dark mode |
-| `CTRL + SUPER + R` | Restart Quickshell (killall + restart) |
-| `CTRL + SUPER + P` | Cycle panel family |
-| `CTRL + SUPER + M` | Launch PrismLauncher (Minecraft) |
-| `CTRL + SUPER + D` | Launch Discord |
-| `CTRL + SUPER + C` | Launch ZapZap (WhatsApp) |
-| `CTRL + SUPER + T` | Launch wallfliper wallpaper picker |
-| `CTRL + ALT + Delete` | Toggle session menu (Quickshell) |
-
-**Mnemonic**: `SUPER` = Windows key. `SHIFT` and `CTRL` are obvious. Most launcher-style bindings are `SUPER + letter`.
-
-## Customize
-
-The most common edits:
-
-- **Add a keybind**: edit `hypr/custom/keybinds.lua`, then `hyprctl reload`
-- **Change wallpaper**: `SUPER + CTRL + T` opens the wallfliper GUI. Or run the daemon directly: `python3 ~/.config/hypr/wallfliper/main.py`
-- **Change monitor layout**: edit `hypr/hyprland/monitors.lua`, then `hyprctl reload`
-- **Change Quickshell bar**: edit `quickshell/ii/`, then `SUPER + CTRL + R` to restart
-- **Add a Hyprland animation rule**: edit `hypr/hyprland/animations.lua` (or wherever in `hypr/hyprland/`), then `hyprctl reload`
-
-After ANY config edit, run:
-
-```bash
-hyprctl reload
-```
-
-For Quickshell, use the keybind (`CTRL + SUPER + R`) — it kills and restarts.
-
-## Troubleshooting
-
-### My monitor setup is wrong after `hyprctl reload`
-
-Reload keeps the running session but applies new monitor config. If it gets confused:
-
-```bash
-hyprctl reload
-# If still broken, log out and back in
-```
-
-### A symlink points to a deleted file
-
-```bash
-# Check the symlink target exists
-ls -la ~/.config/hypr
-# If it's broken, re-run the installer
-cd ~/dotfiles/dotfiles-hyprland
 ./install.sh
 ```
 
-### I edited a file but Hyprland doesn't pick it up
+---
 
-Some sub-configs are sourced once. After editing Lua:
+## 🔧 Troubleshooting & Maintenance
 
+### Reload Hyprland & Keybindings
 ```bash
-hyprctl reload   # Hyprland proper
-SUPER+CTRL+R     # Quickshell (uses killall + restart)
+hyprctl reload
 ```
 
-### wallfliper doesn't open
-
-Check the keybind path resolves:
-
+### Restart Quickshell UI
 ```bash
-ls -la ~/.config/hypr/wallfliper/main.py
-# If missing, the deploy is incomplete — re-run the installer
+killall ydotool qs quickshell; qs -c ii &
+# Or press: Ctrl + Super + R
 ```
 
-Check dependencies: `python3` must be on `$PATH` and the wallfliper venv (if used) must be set up. See `hypr/wallfliper/README.md`.
-
-### Custom-layer keybinds fail
-
-The end-4 keybinds work out of the box (this repo). Personal shortcuts like the audio toggle, Steam auto-picture, etc. live in a `custom/keybinds.lua` layer that this public repo does not ship — you need to provide your own `~/.config/hypr/custom/keybinds.lua` that wires those combos to scripts you control. See [Customize](#customize) for how the custom layer works.
-
-### Quickshell bar disappeared
-
-```bash
-# Restart it
-SUPER+CTRL+R
-# Or manually
-qs -p ~/.config/quickshell/ii/
+### Reset / Verify Screenshot Save Path
+Screenshots automatically respect `~/.config/user-dirs.dirs` and `~/.config/illogical-impulse/config.json`:
+```json
+{
+  "screenSnip": {
+    "savePath": "/home/alejandro/Pictures/Screenshots"
+  }
+}
 ```
 
-## Dependencies
+---
 
-The repo only contains config files — no binaries. You need to install the packages listed in `deps/`:
+## 📄 License
 
-- Arch: `deps/packages.txt` (`pacman -S --needed - < deps/packages.txt`)
-- Fedora: `deps/packages.dnf.txt`
-- Debian/Ubuntu: `deps/packages.apt.txt`
-
-Or run the auto-detecting installer: `bash deps/install-deps.sh`
-
-Notable packages:
-- `hyprland`, `hyprlock`, `hypridle` — the WM stack
-- `waybar` or `quickshell` — pick one or both
-- `fuzzel` — app launcher
-- `kitty` — terminal
-- `xdg-desktop-portal-hyprland` — XDG portal integration
-- `python3` — for wallfliper (also needs the Python deps in `hypr/wallfliper/requirements.txt`)
-
-## Related
-
-- Umbrella: https://github.com/blak0p/dotfiles
-- Other sub-repos: `dotfiles-shell`, `dotfiles-editors`
-
-## License
-
-Personal config — use at your own risk. The `wallfliper/` subtree is forked from https://github.com/Roberth-Souza/wallfliper under its own license (see `hypr/wallfliper/LICENSE`).
+MIT License. Designed and maintained by **blak0p**.

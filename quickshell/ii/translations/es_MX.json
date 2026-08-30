@@ -790,5 +790,6 @@
     "Could not fetch data": "No se pudo obtener la información",
     "Waiting for usage data...": "Esperando datos de uso...",
     "Codex account": "Cuenta de Codex",
-    "Extra usage": "Uso adicional"
+    "Extra usage": "Uso adicional",
+    "Search applications, commands (>)...": "Buscar aplicaciones, comandos (>)..."
 }

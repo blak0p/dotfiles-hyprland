@@ -39,7 +39,7 @@ Item {
     Process {
         id: cachyUpdateProc
 
-        command: ["sh", "-c", "cachy-update --list 2>/dev/null | grep -c ' -> ' || true"]
+        command: ["sh", "-c", "if command -v cachy-update &>/dev/null; then cachy-update --list 2>/dev/null | grep -c ' -> ' || true; elif command -v checkupdates &>/dev/null || command -v yay &>/dev/null; then (checkupdates 2>/dev/null; yay -Qua 2>/dev/null) | sort -u | grep -v '^[[:space:]]*$' | wc -l; elif command -v dnf &>/dev/null; then dnf check-update -q 2>/dev/null | grep -v '^[[:space:]]*$' | wc -l; elif command -v apt &>/dev/null; then apt list --upgradable 2>/dev/null | grep -v '^Listing' | grep -v '^[[:space:]]*$' | wc -l; elif command -v zypper &>/dev/null; then zypper list-updates 2>/dev/null | grep -c '^v' || true; else echo '0'; fi"]
 
         stdout: SplitParser {
             onRead: (data) => {
@@ -52,7 +52,7 @@ Item {
     Process {
         id: checkLockProc
 
-        command: ["test", "-f", "/var/lib/pacman/db.lck"]
+        command: ["sh", "-c", "test -f /var/lib/pacman/db.lck || test -f /var/run/dnf.pid || test -f /var/lib/dnf/transaction.lock || test -f /var/lib/dpkg/lock-frontend || test -f /var/lib/apt/lists/lock"]
         onExited: (code) => {
             updateService.isSystemUpdating = (code === 0);
         }

@@ -5,8 +5,17 @@
 -- Launcher
 hl.bind("SUPER + Space", hl.dsp.global("quickshell:searchToggleRelease"), { description = "Shell: Toggle search" })
 
--- Rename workspace: modal tipo Win+R con Rofi
-hl.bind("SUPER + R", hl.dsp.exec_cmd("bash $HOME/.config/hypr/scripts/rename_workspace.sh"), { description = "Workspace: Rename active" })
+-- Screen snip (Ctrl + Win + S)
+hl.bind("CTRL + SUPER + S", hl.dsp.global("quickshell:regionScreenshot"), { description = "Utilities: Screen snip" })
+
+-- Screen record toggle (Super + Alt + R, Super + Shift + R, Ctrl + Alt + R)
+hl.bind("SUPER + ALT + R", hl.dsp.exec_cmd("bash " .. HOME .. "/.config/quickshell/ii/scripts/videos/record.sh --fullscreen"), { locked = true, description = "Utilities: Record screen toggle" })
+hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd("bash " .. HOME .. "/.config/quickshell/ii/scripts/videos/record.sh"), { locked = true, description = "Utilities: Record region toggle" })
+hl.bind("CTRL + ALT + R", hl.dsp.exec_cmd("bash " .. HOME .. "/.config/quickshell/ii/scripts/videos/record.sh --fullscreen"), { locked = true })
+hl.bind("CTRL + ALT + r", hl.dsp.exec_cmd("bash " .. HOME .. "/.config/quickshell/ii/scripts/videos/record.sh --fullscreen"), { locked = true })
+
+-- Rename workspace: Dynamic Island modal con Win+R
+hl.bind("SUPER + R", hl.dsp.global("quickshell:workspaceRenameToggle"), { description = "Workspace: Rename active (Dynamic Island)" })
 
 -- Window management (pisan los de end-4)
 hl.bind("SUPER + C", hl.dsp.window.close(), { description = "Window: Close" })

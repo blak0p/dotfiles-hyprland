@@ -5,7 +5,6 @@ import Quickshell.Services.SystemTray
 import Quickshell.Widgets
 import qs.Core
 import qs.Core.Components
-import qs.Core.Services
 
 MouseArea {
     id: itemRoot
@@ -43,6 +42,21 @@ MouseArea {
         }
     }
 
+    Loader {
+        id: menuPopupLoader
+        active: false
+
+        sourceComponent: TrayMenuPopup {
+            trayItem: itemRoot.trayItem
+            anchor.window: itemRoot.QsWindow.window
+            anchor.item: itemRoot
+
+            Component.onCompleted: {
+                this.visible = true;
+            }
+        }
+    }
+
     onClicked: (mouse) => {
         if (!itemRoot.trayItem)
             return;
@@ -50,8 +64,14 @@ MouseArea {
         if (mouse.button === Qt.LeftButton) {
             itemRoot.trayItem.activate();
         } else if (mouse.button === Qt.RightButton) {
-            let globalPos = itemRoot.mapToItem(null, itemRoot.width / 2, 0);
-            AppState.toggleTrayMenu(itemRoot.trayItem, globalPos ? globalPos.x : 0);
+            if (menuPopupLoader.active && menuPopupLoader.item && menuPopupLoader.item.visible) {
+                menuPopupLoader.item.visible = false;
+                menuPopupLoader.active = false;
+            } else {
+                menuPopupLoader.active = true;
+                if (menuPopupLoader.item)
+                    menuPopupLoader.item.visible = true;
+            }
         } else if (mouse.button === Qt.MiddleButton) {
             if (itemRoot.trayItem.secondaryActivate)
                 itemRoot.trayItem.secondaryActivate();
@@ -60,6 +80,7 @@ MouseArea {
         itemRoot.clicked(mouse);
     }
 }
+
 
 
 

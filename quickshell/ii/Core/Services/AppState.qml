@@ -8,33 +8,15 @@ Item {
 
     property string activePopup: ""
     property int pendingSettingsTab: -1
-    property var activeTrayItem: null
-    property real activeTrayX: 0
 
     signal togglePopup(string popupId)
     signal openPopup(string popupId)
 
-    function toggleTrayMenu(trayItem, targetX) {
-        if (activePopup === "systemTray" && activeTrayItem === trayItem) {
-            activeTrayItem = null;
-            togglePopup("systemTray");
-        } else {
-            activeTrayItem = trayItem;
-            if (targetX !== undefined)
-                activeTrayX = targetX;
-            openPopup("systemTray");
-        }
-    }
-
     onTogglePopup: (popupId) => {
-        if (popupId !== "systemTray")
-            activeTrayItem = null;
         activePopup = (activePopup === popupId ? "" : popupId);
     }
 
     onOpenPopup: (popupId) => {
-        if (popupId !== "systemTray")
-            activeTrayItem = null;
         activePopup = popupId;
     }
 

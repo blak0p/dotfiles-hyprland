@@ -22,3 +22,14 @@ hl.animation({ leaf = "windowsOut", enabled = true, speed = 5, bezier = "ease", 
 hl.animation({ leaf = "windowsMove", enabled = true, speed = 5, bezier = "overshot", style = "slide" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "overshot", style = "slide" })
 hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 5, bezier = "overshot", style = "slidevert" })
+
+-- Bordes visibles para ventanas
+hl.config({
+    general = {
+        border_size = 2,
+        col = {
+            active_border = "rgba(c2c1ffee)",
+            inactive_border = "rgba(47464f88)"
+        }
+    }
+})

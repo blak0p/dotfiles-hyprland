@@ -2,6 +2,10 @@
 
 export PATH="/usr/bin:/usr/local/bin:$PATH"
 
+if pidof quickshell >/dev/null 2>&1; then
+    qs -c ii ipc call workspace renameToggle 2>/dev/null && exit 0
+fi
+
 WS_ID=$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.id' 2>/dev/null || echo "1")
 STATE_FILE_1="$HOME/.local/state/quickshell/states.json"
 STATE_FILE_2="$HOME/.local/state/quickshell/ii/states.json"

@@ -130,9 +130,9 @@ Scope {
 
                     WlrLayershell.layer: WlrLayer.Overlay
                     WlrLayershell.exclusionMode: ExclusionMode.Ignore
-                    WlrLayershell.keyboardFocus: unifiedIsland.currentMode === "launcher" ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+                    WlrLayershell.keyboardFocus: (unifiedIsland.currentMode === "launcher" || unifiedIsland.currentMode === "workspaceRename") ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
                     color: "transparent"
-                    focusable: unifiedIsland.currentMode === "launcher"
+                    focusable: (unifiedIsland.currentMode === "launcher" || unifiedIsland.currentMode === "workspaceRename")
                     screen: surfaceLoader.modelData
 
                     anchors {
@@ -148,7 +148,7 @@ Scope {
                         y: surface.barMarginTop
 
                         onCurrentModeChanged: {
-                            if (currentMode === "launcher" || currentMode === "dashboard") {
+                            if (currentMode === "launcher" || currentMode === "dashboard" || currentMode === "workspaceRename") {
                                 GlobalFocusGrab.addDismissable(popupSurface);
                             } else {
                                 GlobalFocusGrab.removeDismissable(popupSurface);
@@ -159,18 +159,10 @@ Scope {
                     Connections {
                         target: GlobalFocusGrab
                         function onDismissed() {
-                            if (AppState.activePopup === "launcher" || AppState.activePopup === "dashboard" || AppState.activePopup === "controlCenter") {
+                            if (AppState.activePopup === "launcher" || AppState.activePopup === "dashboard" || AppState.activePopup === "controlCenter" || AppState.activePopup === "workspaceRename") {
                                 AppState.activePopup = "";
                             }
                         }
-                    }
-
-                    SystemTray {
-                        id: trayPopup
-                        popupId: "systemTray"
-                        currentTrayItem: AppState.activeTrayItem
-                        x: Math.max(surface.barMarginSide, Math.min(AppState.activeTrayX - implicitWidth / 2, popupSurface.width - implicitWidth - surface.barMarginSide))
-                        y: surface.popupStartY
                     }
 
                     mask: Region {
@@ -179,13 +171,6 @@ Scope {
                             y: unifiedIsland.y
                             width: unifiedIsland.width
                             height: unifiedIsland.height
-                        }
-
-                        Region {
-                            x: trayPopup.x
-                            y: trayPopup.y
-                            width: trayPopup._visible ? trayPopup.implicitWidth : 0
-                            height: trayPopup._visible ? trayPopup.implicitHeight : 0
                         }
                     }
                 }
@@ -302,6 +287,36 @@ Scope {
         name: "overviewWorkspacesToggle"
         description: "Toggles launcher on press"
         onPressed: AppState.togglePopup("launcher")
+    }
+
+    IpcHandler {
+        target: "workspace"
+
+        function rename(): void {
+            AppState.openPopup("workspaceRename");
+        }
+        function renameToggle(): void {
+            AppState.togglePopup("workspaceRename");
+        }
+        function toggle(): void {
+            AppState.togglePopup("workspaceRename");
+        }
+        function close(): void {
+            if (AppState.activePopup === "workspaceRename")
+                AppState.activePopup = "";
+        }
+    }
+
+    GlobalShortcut {
+        name: "workspaceRenameToggle"
+        description: "Toggles workspace rename in Dynamic Island"
+        onPressed: AppState.togglePopup("workspaceRename")
+    }
+
+    GlobalShortcut {
+        name: "workspaceRename"
+        description: "Opens workspace rename in Dynamic Island"
+        onPressed: AppState.openPopup("workspaceRename")
     }
 }
 

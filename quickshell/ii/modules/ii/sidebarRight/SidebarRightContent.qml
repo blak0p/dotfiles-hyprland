@@ -46,6 +46,7 @@ Item {
 
     StyledRectangularShadow {
         target: sidebarRightBackground
+        radius: sidebarRightBackground.radius
     }
     Rectangle {
         id: sidebarRightBackground
@@ -56,7 +57,7 @@ Item {
         color: Appearance.colors.colLayer0
         border.width: 1
         border.color: Appearance.colors.colLayer0Border
-        radius: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1
+        radius: Appearance.rounding.large
 
         ColumnLayout {
             anchors.fill: parent
@@ -66,7 +67,6 @@ Item {
             SystemButtonRow {
                 Layout.fillHeight: false
                 Layout.fillWidth: true
-                // Layout.margins: 10
                 Layout.topMargin: 5
                 Layout.bottomMargin: 0
             }

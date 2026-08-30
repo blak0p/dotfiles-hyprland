@@ -5,23 +5,25 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import Quickshell.Services.SystemTray
 import qs.Core
 import qs.Core.Components
 import qs.Core.Services
 import qs.services
+import qs.modules.common
 import "../../Components" as BarComponents
+import qs.modules.ii.bar as BarModules
 import "../SystemTray" as STray
 import qs.Modules.Bar.Widgets.MainPanel.Dashboard as MainPanelDashboard
 import qs.Modules.Bar.Widgets.MainPanel.Performance as MainPanelPerformance
-import qs.Modules.ControlCenter as CC
 
 Rectangle {
     id: root
 
     property string currentMode: {
+        if (AppState.activePopup === "workspaceRename") return "workspaceRename";
         if (AppState.activePopup === "launcher") return "launcher";
-        if (AppState.activePopup === "controlCenter") return "controlCenter";
         if (AppState.activePopup === "dashboard") return "dashboard";
         if (IslandState.mode !== IslandState.modeIdle && IslandState.activeNotification !== null) return "notif";
         return "clock";
@@ -29,7 +31,7 @@ Rectangle {
 
     readonly property bool isNotifActive: currentMode === "notif"
     readonly property bool isCritical: isNotifActive && IslandState.isCritical(IslandState.activeNotification)
-    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard" || currentMode === "controlCenter" || currentMode === "notif"
+    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard" || currentMode === "notif" || currentMode === "workspaceRename"
 
     width: implicitWidth
     height: implicitHeight
@@ -39,21 +41,19 @@ Rectangle {
     border.color: isCritical ? Theme.accent : (isNotifActive ? Qt.rgba(1, 1, 1, 0.18) : Qt.rgba(1, 1, 1, 0.08))
     clip: true
 
-    readonly property int idleWingWidth: Math.max(workspacesWidget.implicitWidth, rightControlsRow.implicitWidth)
-
     implicitWidth: {
-        if (currentMode === "controlCenter") return 620;
+        if (currentMode === "workspaceRename") return 460;
         if (currentMode === "dashboard") {
             if (dashboardActiveTab === 1) return 600; // Rendimiento
             return 680;
         }
         if (currentMode === "launcher") return searchQuery !== "" ? 720 : 480;
         if (currentMode === "notif") return 480;
-        return idleWingWidth * 2 + clockArea.implicitWidth + 80;
+        return idleContentRow.implicitWidth + 32;
     }
 
     implicitHeight: {
-        if (currentMode === "controlCenter") return 570;
+        if (currentMode === "workspaceRename") return 48;
         if (currentMode === "dashboard") {
             if (dashboardActiveTab === 0) return 590; // Dashboard
             if (dashboardActiveTab === 1) return 410; // Rendimiento
@@ -122,7 +122,7 @@ Rectangle {
     }
 
     // ==========================================
-    // 1. ALL-IN-ONE IDLE VIEW (Symmetrical 3-Slot Layout)
+    // 1. ALL-IN-ONE IDLE VIEW (Tight, compact RowLayout)
     // ==========================================
     Item {
         id: idleContainer
@@ -134,108 +134,90 @@ Rectangle {
         Behavior on opacity { NumberAnimation { duration: 180 } }
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
-        // CENTER SLOT: Clock
-        Item {
-            id: clockArea
+        RowLayout {
+            id: idleContentRow
             anchors.centerIn: parent
-            implicitWidth: clockInnerRow.implicitWidth + 12
-            implicitHeight: 32
+            spacing: 10
 
-            RowLayout {
-                id: clockInnerRow
-                anchors.centerIn: parent
-                spacing: Constants.sizeXs
-
-                ThemedText {
-                    text: Qt.formatDateTime(SystemInfoService.currentTime, "HH:mm")
-                    font.bold: true
-                    font.pixelSize: Constants.sizeSm
-                }
-
-                ThemedText {
-                    text: "•"
-                    color: Theme.muted
-                    font.pixelSize: Constants.size2Xs
-                }
-
-                ThemedText {
-                    text: Qt.formatDateTime(SystemInfoService.currentTime, "ddd, d MMM")
-                    color: Theme.muted
-                    font.pixelSize: Constants.sizeSm
-                }
+            // LEFT: Workspaces (Avatar + Active Workspaces)
+            BarComponents.Workspaces {
+                id: workspacesWidget
+                transparentBg: true
+                Layout.alignment: Qt.AlignVCenter
             }
 
-            HoverHandler {
-                id: clockHoverHandler
-                enabled: root.currentMode === "clock"
-                onHoveredChanged: {
-                    if (hovered) {
-                        openDashboardTimer.restart();
-                    } else {
+            // LEFT DIVIDER
+            Divider {
+                vertical: true
+                height: 18
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            // CENTER: Clock
+            Item {
+                id: clockArea
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: clockInnerRow.implicitWidth + 12
+                implicitHeight: 32
+
+                RowLayout {
+                    id: clockInnerRow
+                    anchors.centerIn: parent
+                    spacing: Constants.sizeXs
+
+                    ThemedText {
+                        text: Qt.formatDateTime(SystemInfoService.currentTime, "HH:mm")
+                        font.bold: true
+                        font.pixelSize: Constants.sizeSm
+                    }
+
+                    ThemedText {
+                        text: "•"
+                        color: Theme.muted
+                        font.pixelSize: Constants.size2Xs
+                    }
+
+                    ThemedText {
+                        text: Qt.formatDateTime(SystemInfoService.currentTime, "ddd, d MMM")
+                        color: Theme.muted
+                        font.pixelSize: Constants.sizeSm
+                    }
+                }
+
+                HoverHandler {
+                    id: clockHoverHandler
+                    enabled: root.currentMode === "clock"
+                    onHoveredChanged: {
+                        if (hovered) {
+                            openDashboardTimer.restart();
+                        } else {
+                            openDashboardTimer.stop();
+                        }
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: root.currentMode === "clock"
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
                         openDashboardTimer.stop();
+                        AppState.activePopup = "dashboard";
                     }
                 }
             }
 
-            MouseArea {
-                anchors.fill: parent
-                enabled: root.currentMode === "clock"
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    openDashboardTimer.stop();
-                    AppState.activePopup = "dashboard";
-                }
+            // RIGHT DIVIDER
+            Divider {
+                vertical: true
+                height: 18
+                Layout.alignment: Qt.AlignVCenter
             }
-        }
 
-        // LEFT DIVIDER
-        Divider {
-            id: leftDivider
-            vertical: true
-            height: 18
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.right: clockArea.left
-            anchors.rightMargin: 10
-        }
-
-        // RIGHT DIVIDER
-        Divider {
-            id: rightDivider
-            vertical: true
-            height: 18
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: clockArea.right
-            anchors.leftMargin: 10
-        }
-
-        // LEFT WING: Workspaces
-        Item {
-            anchors.left: parent.left
-            anchors.leftMargin: 16
-            anchors.right: leftDivider.left
-            anchors.rightMargin: 10
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-
-            BarComponents.Workspaces {
-                id: workspacesWidget
-                transparentBg: true
-                anchors.centerIn: parent
-            }
-        }
-
-        // RIGHT WING: Controls + SysTray + Power
-        Item {
-            anchors.left: rightDivider.right
-            anchors.leftMargin: 10
-            anchors.right: parent.right
-            anchors.rightMargin: 16
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-
+            // RIGHT: Control Center + SysTray
             RowLayout {
                 id: rightControlsRow
-                anchors.centerIn: parent
+                Layout.alignment: Qt.AlignVCenter
                 spacing: Constants.sizeSm
 
                 BarComponents.ControlCenterButton {
@@ -243,47 +225,11 @@ Rectangle {
                     Layout.alignment: Qt.AlignVCenter
                 }
 
-                Rectangle {
-                    Layout.preferredHeight: 28
+                BarModules.SysTray {
+                    id: sysTrayWidget
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.maximumWidth: 120
-                    Layout.preferredWidth: trayRow.implicitWidth > 0 ? Math.min(trayRow.implicitWidth + 8, Layout.maximumWidth) : 0
-                    color: "transparent"
-                    visible: trayRow.implicitWidth > 0
-
-                    Flickable {
-                        id: trayFlick
-                        anchors.fill: parent
-                        contentWidth: trayRow.implicitWidth
-                        contentHeight: height
-                        boundsBehavior: Flickable.StopAtBounds
-                        flickableDirection: Flickable.HorizontalFlick
-                        clip: true
-
-                        MouseArea {
-                            anchors.fill: parent
-                            acceptedButtons: Qt.NoButton
-                            onWheel: (wheel) => {
-                                trayFlick.contentX = Math.max(0, Math.min(trayFlick.contentX - (wheel.angleDelta.y / 2), trayFlick.contentWidth - trayFlick.width));
-                            }
-                        }
-
-                        RowLayout {
-                            id: trayRow
-                            height: parent.height
-                            spacing: Constants.sizeSm
-
-                            Repeater {
-                                model: SystemTray.items
-                                delegate: STray.TrayItem {}
-                            }
-                        }
-                    }
-                }
-
-                BarComponents.PowerButton {
-                    transparentBg: true
-                    Layout.alignment: Qt.AlignVCenter
+                    showSeparator: false
+                    showOverflowMenu: true
                 }
             }
         }
@@ -469,7 +415,7 @@ Rectangle {
                     ThemedButton {
                         required property var modelData
                         Layout.fillWidth: true
-                        text: modelData.text || "Abrir"
+                        text: modelData.text || "Open"
                         onClicked: {
                             if (typeof modelData.invoke === "function") {
                                 modelData.invoke();
@@ -577,7 +523,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
                 focus: root.currentMode === "launcher"
-                placeholderText: "Buscar aplicaciones, comandos (>)..."
+                placeholderText: "Search applications, commands (>)..."
                 placeholderTextColor: Theme.muted
                 font.family: Constants.fontFamily
                 font.pixelSize: 14
@@ -717,6 +663,137 @@ Rectangle {
         }
     }
 
+    // ==========================================
+    // 4. WORKSPACE RENAME VIEW
+    // ==========================================
+    readonly property int activeWsId: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
+
+    function saveActiveWorkspaceName(newName) {
+        var wsId = root.activeWsId;
+        var idx = wsId - 1;
+        var labels = Array.from(Persistent.states?.workspaceLabels || []);
+        while (labels.length < 10) labels.push("");
+        if (idx >= 0 && idx < 10) {
+            labels[idx] = newName.trim();
+            Persistent.states.workspaceLabels = labels;
+        }
+        AppState.activePopup = "";
+    }
+
+    RowLayout {
+        id: wsRenameRow
+        anchors.fill: parent
+        anchors.leftMargin: 14
+        anchors.rightMargin: 14
+        spacing: 10
+        opacity: root.currentMode === "workspaceRename" ? 1 : 0
+        visible: opacity > 0
+
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+
+        Rectangle {
+            Layout.preferredHeight: 28
+            Layout.preferredWidth: wsBadgeLayout.implicitWidth + 16
+            Layout.alignment: Qt.AlignVCenter
+            radius: 14
+            color: Theme.accent
+
+            RowLayout {
+                id: wsBadgeLayout
+                anchors.centerIn: parent
+                spacing: 6
+
+                SvgIcon {
+                    icon: "edit"
+                    iconColor: Theme.bg
+                    iconSize: 14
+                    flat: true
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                ThemedText {
+                    text: "WS " + root.activeWsId
+                    font.pixelSize: Constants.sizeSm
+                    font.bold: true
+                    color: Theme.bg
+                    Layout.alignment: Qt.AlignVCenter
+                }
+            }
+        }
+
+        TextField {
+            id: wsRenameInput
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
+            focus: root.currentMode === "workspaceRename"
+            placeholderText: "Nombre del workspace..."
+            placeholderTextColor: Theme.muted
+            font.family: Constants.fontFamily
+            font.pixelSize: 14
+            color: Theme.fg
+            background: null
+            leftPadding: 0
+            rightPadding: 0
+
+            Keys.onPressed: (event) => {
+                if (event.key === Qt.Key_Escape) {
+                    AppState.activePopup = "";
+                    event.accepted = true;
+                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    root.saveActiveWorkspaceName(text);
+                    event.accepted = true;
+                }
+            }
+
+            onAccepted: {
+                root.saveActiveWorkspaceName(text);
+            }
+        }
+
+        SvgIconButton {
+            visible: wsRenameInput.text !== ""
+            icon: "x"
+            iconSize: 12
+            flat: true
+            Layout.alignment: Qt.AlignVCenter
+            onClicked: {
+                wsRenameInput.text = "";
+                wsRenameInput.forceActiveFocus();
+            }
+        }
+
+        SvgIconButton {
+            icon: "check"
+            iconSize: 14
+            flat: true
+            Layout.alignment: Qt.AlignVCenter
+            onClicked: {
+                root.saveActiveWorkspaceName(wsRenameInput.text);
+            }
+        }
+
+        Rectangle {
+            Layout.preferredHeight: 22
+            Layout.preferredWidth: 38
+            Layout.alignment: Qt.AlignVCenter
+            radius: 11
+            color: Qt.rgba(1, 1, 1, 0.08)
+
+            ThemedText {
+                anchors.centerIn: parent
+                text: "ESC"
+                font.pixelSize: Constants.size3Xs
+                font.bold: true
+                color: Theme.muted
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: AppState.activePopup = ""
+            }
+        }
+    }
+
     onCurrentModeChanged: {
         if (currentMode === "launcher") {
             searchQuery = "";
@@ -724,24 +801,19 @@ Rectangle {
                 searchInput.text = "";
                 searchInput.forceActiveFocus();
             });
-        }
-        if (currentMode !== "controlCenter") {
-            controlCenterView.currentSubView = "home";
+        } else if (currentMode === "workspaceRename") {
+            Qt.callLater(() => {
+                let wsId = Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1;
+                let idx = wsId - 1;
+                let curLabel = (Persistent.ready && Persistent.states?.workspaceLabels && idx >= 0 && idx < Persistent.states.workspaceLabels.length) ? (Persistent.states.workspaceLabels[idx] || "") : "";
+                wsRenameInput.text = curLabel;
+                wsRenameInput.selectAll();
+                wsRenameInput.forceActiveFocus();
+            });
         }
     }
 
-    // ==========================================
-    // 4. CONTROL CENTER VIEW (Immediate, accessible & drilldown)
-    // ==========================================
-    CC.ControlCenterView {
-        id: controlCenterView
-        anchors.fill: parent
-        anchors.margins: 14
-        opacity: root.currentMode === "controlCenter" ? 1 : 0
-        visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 180 } }
-    }
 
     // ==========================================
     // 5. DASHBOARD VIEW (When hovering/clicking the Clock)
@@ -770,13 +842,13 @@ Rectangle {
 
             ThemedTab {
                 glyph: "dashboard"
-                text: "Dashboard"
+                text: Translation.tr("Dashboard")
                 value: 0
             }
 
             ThemedTab {
                 glyph: "performance"
-                text: "Rendimiento"
+                text: Translation.tr("Performance")
                 value: 1
             }
 

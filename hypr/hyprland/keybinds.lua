@@ -4,9 +4,9 @@ if is_file_exists(HOME .. "/.config/hypr/custom/variables.lua") then
     require("custom.variables")
 end
 
-local qsScripts = "$HOME/.config/quickshell/$qsConfig/scripts"
-local hyprScripts = "$HOME/.config/hypr/hyprland/scripts"
-local qsIpcCall = "qs -c $qsConfig ipc call"
+local qsScripts = HOME .. "/.config/quickshell/ii/scripts"
+local hyprScripts = HOME .. "/.config/hypr/hyprland/scripts"
+local qsIpcCall = "qs -c ii ipc call"
 local qsIsAlive = qsIpcCall .. " TEST_ALIVE"
 
 -- hl.bind("SUPER + SUPER_L", hl.dsp.global("quickshell:searchToggleRelease"), { description = "Shell: Toggle search" })
@@ -23,10 +23,6 @@ local qsIsAlive = qsIpcCall .. " TEST_ALIVE"
 hl.bind("SUPER + Tab", hl.dsp.global("quickshell:overviewWorkspacesToggle"), { description = "Shell: Toggle overview" })
 hl.bind("SUPER + V", hl.dsp.global("quickshell:overviewClipboardToggle"))
 hl.bind("SUPER + Period", hl.dsp.global("quickshell:overviewEmojiToggle"))
-hl.bind("SUPER + A", hl.dsp.global("quickshell:sidebarLeftToggle"), { description = "Shell: Toggle left sidebar" })
-hl.bind("SUPER + ALT + A", hl.dsp.global("quickshell:sidebarLeftToggleDetach"))
-hl.bind("SUPER + Semicolon", hl.dsp.global("quickshell:sidebarLeftToggle"), { description = "Shell: Toggle left sidebar" })
-hl.bind("SUPER + O", hl.dsp.global("quickshell:sidebarLeftToggle"))
 hl.bind("SUPER + N", hl.dsp.global("quickshell:sidebarRightToggle"), { description = "Shell: Toggle right sidebar" })
 hl.bind("SUPER + Slash", hl.dsp.global("quickshell:cheatsheetToggle"), { description = "Shell: Toggle cheatsheet" })
 hl.bind("SUPER + K", hl.dsp.global("quickshell:oskToggle"), { description = "Shell: Toggle on-screen keyboard" })
@@ -82,13 +78,9 @@ hl.bind("SUPER + SHIFT + X", hl.dsp.exec_cmd(
 hl.bind("SUPER + SHIFT + C", hl.dsp.exec_cmd("hyprpicker -a"),
     { description = "Utilities: Pick color #RRGGBB >> clipboard" })
 --# Recording stuff
-hl.bind("SUPER + SHIFT + R", hl.dsp.global("quickshell:regionRecord"),
-    { locked = true, description = "Utilities: Record region (no sound)" })
-hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd(qsIsAlive .. " || " .. qsScripts .. "/videos/record.sh"), { locked = true })
-hl.bind("SUPER + ALT + R", hl.dsp.global("quickshell:regionRecord"), { locked = true })
-hl.bind("SUPER + ALT + R", hl.dsp.exec_cmd(qsIsAlive .. " || " .. qsScripts .. "/videos/record.sh"), { locked = true })
-hl.bind("CTRL + ALT + R", hl.dsp.exec_cmd(qsScripts .. "/videos/record.sh --fullscreen"), { locked = true })
-hl.bind("SUPER + SHIFT + ALT + R", hl.dsp.exec_cmd(qsScripts .. "/videos/record.sh --fullscreen --sound"),
+hl.bind("CTRL + ALT + R", hl.dsp.exec_cmd("bash " .. qsScripts .. "/videos/record.sh --fullscreen"), { locked = true, description = "Utilities: Record screen toggle" })
+hl.bind("SUPER + ALT + R", hl.dsp.exec_cmd("bash " .. qsScripts .. "/videos/record.sh"), { locked = true, description = "Utilities: Record region toggle" })
+hl.bind("SUPER + SHIFT + ALT + R", hl.dsp.exec_cmd("bash " .. qsScripts .. "/videos/record.sh --fullscreen --sound"),
     { locked = true, description = "Utilities: Record screen (with sound)" })
 --# Fullscreen screenshot
 local grimhyprctl = "grim -o \"$(hyprctl activeworkspace -j | jq -r '.monitor')\""

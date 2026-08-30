@@ -148,19 +148,19 @@ CenterWindow {
         if (root.selectedPackages.length === 0)
             return ;
 
-        let names = root.selectedPackages.join(" ");
+        let updateScript = Quickshell.env("HOME") + "/.config/quickshell/ii/Scripts/system_update.sh";
         if (root.actionMode === "remove") {
             removeProc.running = false;
-            removeProc.command = ["kitty", "--class", "kitty-floating", "--hold", "-e", "yay", "-Rns"].concat(root.selectedPackages);
+            removeProc.command = ["kitty", "--class", "kitty-floating", "--hold", "-e", "bash", updateScript, "remove"].concat(root.selectedPackages);
             removeProc.startDetached();
         } else if (root.actionMode === "update") {
             installProc.running = false;
-            installProc.command = ["kitty", "--class", "kitty-floating", "--hold", "-e", "cachy-update"];
+            installProc.command = ["kitty", "--class", "kitty-floating", "--hold", "-e", "bash", updateScript, "update"];
             UpdateService.isSystemUpdating = true;
             installProc.startDetached();
         } else {
             installProc.running = false;
-            installProc.command = ["kitty", "--class", "kitty-floating", "--hold", "-e", "yay", "-S"].concat(root.selectedPackages);
+            installProc.command = ["kitty", "--class", "kitty-floating", "--hold", "-e", "bash", updateScript, "install"].concat(root.selectedPackages);
             installProc.startDetached();
         }
         root.selectedPackages = [];
@@ -171,7 +171,7 @@ CenterWindow {
     function installPackage(name) {
         root.installingPkg = name;
         installProc.running = false;
-        installProc.command = ["sh", "-c", "kitty --class kitty-floating --hold -e yay -S " + name + " & sleep 0.2; hyprctl dispatch focuswindow class:kitty-floating"];
+        installProc.command = ["sh", "-c", "kitty --class kitty-floating --hold -e bash $HOME/.config/quickshell/ii/Scripts/system_update.sh install " + name + " & sleep 0.2; hyprctl dispatch focuswindow class:kitty-floating"];
         installProc.startDetached();
         root.isOpen = false;
     }
@@ -179,7 +179,7 @@ CenterWindow {
     function removePackage(name) {
         root.installingPkg = name;
         removeProc.running = false;
-        removeProc.command = ["sh", "-c", "kitty --class kitty-floating --hold -e yay -Rns " + name + " & sleep 0.2; hyprctl dispatch focuswindow class:kitty-floating"];
+        removeProc.command = ["sh", "-c", "kitty --class kitty-floating --hold -e bash $HOME/.config/quickshell/ii/Scripts/system_update.sh remove " + name + " & sleep 0.2; hyprctl dispatch focuswindow class:kitty-floating"];
         removeProc.startDetached();
         root.isOpen = false;
     }
