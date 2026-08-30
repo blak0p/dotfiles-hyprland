@@ -12,9 +12,13 @@ import qs.modules.common
 BarButton {
     id: root
 
-    implicitWidth: hLayout.implicitWidth + 24
+    property bool transparentBg: false
+    implicitWidth: transparentBg ? hLayout.implicitWidth + 8 : (hLayout.implicitWidth + 24)
     implicitHeight: 32
-    color: Theme.bgSecondary
+    color: transparentBg ? "transparent" : Theme.bgSecondary
+    radius: height / 2
+    border.width: transparentBg ? 0 : 1
+    border.color: Qt.rgba(1, 1, 1, 0.08)
 
     readonly property int workspacesShown: Config.options?.bar.workspaces.shown ?? 10
     readonly property int activeWorkspaceId: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1

@@ -5,10 +5,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.SystemTray
 import qs.Core
 import qs.Core.Components
 import qs.Core.Services
 import qs.services
+import "../../Components" as BarComponents
+import "../SystemTray" as STray
 import qs.Modules.Bar.Widgets.MainPanel.Dashboard as MainPanelDashboard
 import qs.Modules.Bar.Widgets.MainPanel.Performance as MainPanelPerformance
 
@@ -34,6 +37,8 @@ Rectangle {
     border.color: isCritical ? Theme.accent : (isNotifActive ? Qt.rgba(1, 1, 1, 0.18) : Qt.rgba(1, 1, 1, 0.08))
     clip: true
 
+    readonly property int idleWingWidth: Math.max(workspacesWidget.implicitWidth, rightControlsRow.implicitWidth)
+
     implicitWidth: {
         if (currentMode === "dashboard") {
             if (dashboardActiveTab === 1) return 600;
@@ -41,7 +46,7 @@ Rectangle {
         }
         if (currentMode === "launcher") return searchQuery !== "" ? 720 : 480;
         if (currentMode === "notif") return 480;
-        return clockRow.implicitWidth + 36;
+        return idleWingWidth * 2 + clockArea.implicitWidth + 80;
     }
 
     implicitHeight: {
@@ -113,54 +118,180 @@ Rectangle {
     }
 
     // ==========================================
-    // 1. CLOCK VIEW
+    // 1. ALL-IN-ONE IDLE VIEW (Symmetrical 3-Slot Layout with Absolute Centered Clock)
     // ==========================================
-    RowLayout {
-        id: clockRow
-        anchors.centerIn: parent
+    Item {
+        id: idleContainer
+        anchors.fill: parent
         opacity: root.currentMode === "clock" ? 1 : 0
         scale: root.currentMode === "clock" ? 1 : 0.8
         visible: opacity > 0
-        spacing: Constants.sizeXs
 
         Behavior on opacity { NumberAnimation { duration: 180 } }
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
-        ThemedText {
-            text: Qt.formatDateTime(SystemInfoService.currentTime, "HH:mm")
-            font.bold: true
-            font.pixelSize: Constants.sizeSm
-        }
+        // CENTER SLOT: Clock (Absolute mathematical center of the capsule)
+        Item {
+            id: clockArea
+            anchors.centerIn: parent
+            implicitWidth: clockInnerRow.implicitWidth + 12
+            implicitHeight: 32
 
-        Divider { vertical: true }
+            RowLayout {
+                id: clockInnerRow
+                anchors.centerIn: parent
+                spacing: Constants.sizeXs
 
-        ThemedText {
-            text: Qt.formatDateTime(SystemInfoService.currentTime, "ddd, d MMM")
-            color: Theme.muted
-            font.pixelSize: Constants.sizeSm
-        }
-    }
+                ThemedText {
+                    text: Qt.formatDateTime(SystemInfoService.currentTime, "HH:mm")
+                    font.bold: true
+                    font.pixelSize: Constants.sizeSm
+                }
 
-    // Interactive hover & click for Clock to open Dashboard
-    HoverHandler {
-        id: clockHoverHandler
-        enabled: root.currentMode === "clock"
-        onHoveredChanged: {
-            if (hovered) {
-                openDashboardTimer.restart();
-            } else {
-                openDashboardTimer.stop();
+                ThemedText {
+                    text: "•"
+                    color: Theme.muted
+                    font.pixelSize: Constants.size2Xs
+                }
+
+                ThemedText {
+                    text: Qt.formatDateTime(SystemInfoService.currentTime, "ddd, d MMM")
+                    color: Theme.muted
+                    font.pixelSize: Constants.sizeSm
+                }
+            }
+
+            HoverHandler {
+                id: clockHoverHandler
+                enabled: root.currentMode === "clock"
+                onHoveredChanged: {
+                    if (hovered) {
+                        openDashboardTimer.restart();
+                    } else {
+                        openDashboardTimer.stop();
+                    }
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                enabled: root.currentMode === "clock"
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    openDashboardTimer.stop();
+                    AppState.activePopup = "dashboard";
+                }
             }
         }
-    }
 
-    MouseArea {
-        anchors.fill: parent
-        enabled: root.currentMode === "clock"
-        cursorShape: Qt.PointingHandCursor
-        onClicked: {
-            openDashboardTimer.stop();
-            AppState.activePopup = "dashboard";
+        // LEFT DIVIDER
+        Divider {
+            id: leftDivider
+            vertical: true
+            height: 18
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: clockArea.left
+            anchors.rightMargin: 10
+        }
+
+        // RIGHT DIVIDER
+        Divider {
+            id: rightDivider
+            vertical: true
+            height: 18
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: clockArea.right
+            anchors.leftMargin: 10
+        }
+
+        // LEFT WING: Workspaces (anchored to left)
+        Item {
+            anchors.left: parent.left
+            anchors.leftMargin: 16
+            anchors.right: leftDivider.left
+            anchors.rightMargin: 10
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+
+            BarComponents.Workspaces {
+                id: workspacesWidget
+                transparentBg: true
+                anchors.centerIn: parent
+            }
+        }
+
+        // RIGHT WING: Controls + SysTray + Power (anchored to right)
+        Item {
+            anchors.left: rightDivider.right
+            anchors.leftMargin: 10
+            anchors.right: parent.right
+            anchors.rightMargin: 16
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+
+            RowLayout {
+                id: rightControlsRow
+                anchors.centerIn: parent
+                spacing: Constants.sizeSm
+
+                BarComponents.ControlCenterButton {
+                    transparentBg: true
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                Rectangle {
+                    Layout.preferredHeight: 28
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.maximumWidth: 120
+                    Layout.preferredWidth: trayRow.implicitWidth > 0 ? Math.min(trayRow.implicitWidth + 8, Layout.maximumWidth) : 0
+                    color: "transparent"
+                    visible: trayRow.implicitWidth > 0
+
+                    Flickable {
+                        id: trayFlick
+                        anchors.fill: parent
+                        contentWidth: trayRow.implicitWidth
+                        contentHeight: height
+                        boundsBehavior: Flickable.StopAtBounds
+                        flickableDirection: Flickable.HorizontalFlick
+                        clip: true
+
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.NoButton
+                            onWheel: (wheel) => {
+                                trayFlick.contentX = Math.max(0, Math.min(trayFlick.contentX - (wheel.angleDelta.y / 2), trayFlick.contentWidth - trayFlick.width));
+                            }
+                        }
+
+                        RowLayout {
+                            id: trayRow
+                            height: parent.height
+                            spacing: Constants.sizeSm
+
+                            Repeater {
+                                model: SystemTray.items
+                                delegate: STray.TrayItem {
+                                    trayItem: modelData
+                                    onClicked: (mouse) => {
+                                        if (mouse.button === Qt.RightButton) {
+                                            if (modelData.menu)
+                                                AppState.togglePopup("systemTray_" + index);
+                                            else if (modelData.secondaryActivate)
+                                                modelData.secondaryActivate();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                BarComponents.PowerButton {
+                    transparentBg: true
+                    Layout.alignment: Qt.AlignVCenter
+                }
+            }
         }
     }
 
