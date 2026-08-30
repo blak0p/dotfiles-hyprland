@@ -86,8 +86,21 @@ QtObject {
         }
     }
 
+    function pauseActiveTimer() {
+        if (activeNotification && activeNotification.timer && typeof activeNotification.timer.stop === "function") {
+            activeNotification.timer.stop();
+        }
+    }
+
+    function resumeActiveTimer() {
+        if (activeNotification && activeNotification.timer && typeof activeNotification.timer.restart === "function") {
+            activeNotification.timer.restart();
+        }
+    }
+
     function dismissActive() {
         if (activeNotification) {
+            let notifId = activeNotification.notificationId;
             if (typeof activeNotification.close === "function") {
                 activeNotification.close();
             } else if (activeNotification.notification && typeof activeNotification.notification.dismiss === "function") {
@@ -95,6 +108,10 @@ QtObject {
             }
             if (activeNotification.timer && typeof activeNotification.timer.stop === "function") {
                 activeNotification.timer.stop();
+            }
+            if (notifId !== undefined && typeof Notifications !== "undefined" && typeof Notifications.discardNotification === "function") {
+                Notifications.discardNotification(notifId);
+                return;
             }
         }
         advanceQueue();

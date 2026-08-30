@@ -24,7 +24,7 @@ Rectangle {
 
     readonly property bool isNotifActive: currentMode === "notif"
     readonly property bool isCritical: isNotifActive && IslandState.isCritical(IslandState.activeNotification)
-    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard"
+    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard" || currentMode === "notif"
 
     width: implicitWidth
     height: implicitHeight
@@ -40,7 +40,7 @@ Rectangle {
             return 680;
         }
         if (currentMode === "launcher") return searchQuery !== "" ? 720 : 480;
-        if (currentMode === "notif") return Math.min(480, Math.max(340, notifRow.implicitWidth + 36));
+        if (currentMode === "notif") return 480;
         return clockRow.implicitWidth + 36;
     }
 
@@ -55,6 +55,9 @@ Rectangle {
             if (searchQuery === "") return 48;
             if (searchModel.count === 0) return 170;
             return Math.min(540, 68 + Math.min(searchModel.count, 6) * 58);
+        }
+        if (currentMode === "notif") {
+            return Math.max(110, notifNotchColumn.implicitHeight + 28);
         }
         return 48;
     }
@@ -162,116 +165,197 @@ Rectangle {
     }
 
     // ==========================================
-    // 2. NOTIFICATION VIEW (2-line compact)
+    // 2. NOTIFICATION VIEW (Dynamic Island Dropdown Notch)
     // ==========================================
-    RowLayout {
-        id: notifRow
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        height: 48
-        anchors.leftMargin: 16
-        anchors.rightMargin: 16
+    Item {
+        id: notifContainer
+        anchors.fill: parent
         opacity: root.currentMode === "notif" ? 1 : 0
-        scale: root.currentMode === "notif" ? 1 : 0.85
+        scale: root.currentMode === "notif" ? 1 : 0.92
         visible: opacity > 0
-        spacing: Constants.sizeSm
+        clip: true
 
         Behavior on opacity { NumberAnimation { duration: 200 } }
         Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
 
-        Item {
-            Layout.preferredWidth: 24
-            Layout.preferredHeight: 24
-            Layout.alignment: Qt.AlignVCenter
-
-            NotificationIcon {
-                anchors.fill: parent
-                notifData: IslandState.activeNotification
-                iconSize: 18
+        HoverHandler {
+            id: notifHoverHandler
+            onHoveredChanged: {
+                if (hovered) {
+                    IslandState.pauseActiveTimer();
+                } else {
+                    IslandState.resumeActiveTimer();
+                }
             }
         }
 
         ColumnLayout {
-            Layout.fillWidth: true
-            Layout.alignment: Qt.AlignVCenter
-            spacing: 1
+            id: notifNotchColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 14
+            spacing: 8
 
+            // Top Header: App Icon, App Name, Timestamp, Queue Badge, Dismiss
             RowLayout {
                 Layout.fillWidth: true
-                spacing: Constants.size2Xs
+                spacing: Constants.sizeSm
+
+                Item {
+                    Layout.preferredWidth: 22
+                    Layout.preferredHeight: 22
+                    Layout.alignment: Qt.AlignVCenter
+
+                    NotificationIcon {
+                        anchors.fill: parent
+                        notifData: IslandState.activeNotification
+                        iconSize: 18
+                    }
+                }
 
                 ThemedText {
                     text: IslandState.activeNotification?.appName || "Notificación"
                     font.bold: true
                     font.pixelSize: Constants.sizeSm
-                    elide: Text.ElideRight
-                    Layout.maximumWidth: 160
+                    color: Theme.muted
+                    Layout.alignment: Qt.AlignVCenter
                 }
 
                 ThemedText {
                     text: "•"
                     color: Theme.muted
                     font.pixelSize: Constants.size2Xs
+                    Layout.alignment: Qt.AlignVCenter
                 }
 
                 ThemedText {
-                    text: IslandState.activeNotification?.summary || ""
-                    color: Theme.fg
-                    font.pixelSize: Constants.sizeSm
-                    elide: Text.ElideRight
+                    text: {
+                        let ts = IslandState.activeNotification?.timestamp || IslandState.activeNotification?.time;
+                        if (!ts) return "ahora";
+                        let date = new Date(ts);
+                        return Qt.formatDateTime(date, "HH:mm");
+                    }
+                    color: Theme.muted
+                    font.pixelSize: Constants.sizeXs
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                Item {
                     Layout.fillWidth: true
+                }
+
+                // Queue Badge (+N)
+                Rectangle {
+                    visible: IslandState.queueCount > 0
+                    Layout.preferredHeight: 18
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitWidth: badgeText.implicitWidth + 8
+                    radius: 9
+                    color: Theme.bgTertiary
+
+                    ThemedText {
+                        id: badgeText
+                        anchors.centerIn: parent
+                        text: "+" + IslandState.queueCount
+                        font.pixelSize: Constants.size3Xs
+                        font.bold: true
+                    }
+                }
+
+                SvgIconButton {
+                    icon: "x"
+                    iconSize: 12
+                    flat: true
+                    Layout.alignment: Qt.AlignVCenter
+                    onClicked: IslandState.dismissActive()
                 }
             }
 
+            // Summary / Title
             ThemedText {
-                text: (IslandState.activeNotification?.body || "").replace(/\n/g, " ")
-                color: Theme.muted
-                font.pixelSize: Constants.sizeXs
-                elide: Text.ElideRight
                 Layout.fillWidth: true
-                Layout.maximumWidth: 320
-            }
-        }
-
-        Rectangle {
-            visible: IslandState.queueCount > 0
-            Layout.preferredHeight: 18
-            Layout.alignment: Qt.AlignVCenter
-            implicitWidth: badgeText.implicitWidth + 8
-            radius: 9
-            color: Theme.bgTertiary
-
-            ThemedText {
-                id: badgeText
-                anchors.centerIn: parent
-                text: "+" + IslandState.queueCount
-                font.pixelSize: Constants.size3Xs
+                text: IslandState.activeNotification?.summary || ""
                 font.bold: true
+                font.pixelSize: Constants.sizeMd
+                color: Theme.fg
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+                visible: text !== ""
+            }
+
+            // Body Message
+            ThemedText {
+                Layout.fillWidth: true
+                text: IslandState.activeNotification?.body || ""
+                color: Theme.muted
+                font.pixelSize: Constants.sizeSm
+                wrapMode: Text.Wrap
+                maximumLineCount: 4
+                elide: Text.ElideRight
+                textFormat: Text.RichText
+                visible: text !== ""
+                onLinkActivated: (link) => Qt.openUrlExternally(link)
+            }
+
+            // Image Attachment (if any)
+            Image {
+                Layout.fillWidth: true
+                Layout.maximumHeight: 140
+                fillMode: Image.PreserveAspectFit
+                source: {
+                    let img = IslandState.activeNotification?.image || "";
+                    if (!img) return "";
+                    if (img.startsWith("file://") || img.startsWith("image://") || img.startsWith("http")) return img;
+                    if (img.startsWith("/")) return "file://" + img;
+                    return img;
+                }
+                visible: (IslandState.activeNotification?.image || "") !== ""
+                asynchronous: true
+            }
+
+            // Action Buttons Row (D-Bus notification actions)
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Constants.sizeSm
+                visible: {
+                    let actions = IslandState.activeNotification?.actions || IslandState.activeNotification?.notification?.actions;
+                    return Boolean(actions && actions.length > 0);
+                }
+
+                Repeater {
+                    model: IslandState.activeNotification?.actions || IslandState.activeNotification?.notification?.actions || []
+
+                    ThemedButton {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        text: modelData.text || "Abrir"
+                        onClicked: {
+                            if (typeof modelData.invoke === "function") {
+                                modelData.invoke();
+                            } else if (IslandState.activeNotification?.notification && typeof IslandState.activeNotification.notification.invokeAction === "function") {
+                                IslandState.activeNotification.notification.invokeAction(modelData.identifier);
+                            } else if (IslandState.activeNotification?.notificationId !== undefined && typeof Notifications !== "undefined" && typeof Notifications.attemptInvokeAction === "function") {
+                                Notifications.attemptInvokeAction(IslandState.activeNotification.notificationId, modelData.identifier);
+                            }
+                            IslandState.dismissActive();
+                        }
+                    }
+                }
+            }
+
+            // Bottom Progress Bar
+            Rectangle {
+                Layout.fillWidth: true
+                height: 2
+                radius: 1
+                color: root.isCritical ? Theme.accent : Theme.accentComplementary
+                opacity: (IslandState.activeNotification?.progress !== undefined) ? 0.8 : 0
+                visible: opacity > 0
+                width: parent ? parent.width * (IslandState.activeNotification?.progress ?? 1) : 0
             }
         }
-
-        SvgIconButton {
-            icon: "x"
-            iconSize: 12
-            flat: true
-            Layout.alignment: Qt.AlignVCenter
-            onClicked: IslandState.dismissActive()
-        }
-    }
-
-    // Notification progress line
-    Rectangle {
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.topMargin: 46
-        anchors.leftMargin: root.radius / 2
-        height: 2
-        radius: 1
-        width: root.currentMode === "notif" ? Math.max(0, (parent.width - root.radius) * (IslandState.activeNotification?.progress ?? 0)) : 0
-        color: root.isCritical ? Theme.accent : Theme.accentComplementary
-        opacity: root.currentMode === "notif" && (IslandState.activeNotification?.progress !== undefined) ? 0.8 : 0
-        visible: opacity > 0
     }
 
     // ==========================================
