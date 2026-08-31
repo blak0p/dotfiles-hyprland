@@ -1,6 +1,6 @@
 -- Keybinds personalizados (se cargan al final, pisan los de end-4)
 -- Parte pública: window management, workspaces sync, navegación
--- Los binds privados (scripts, distrobox, flatpak) están en dotfiles-bunker
+-- Los binds privados se cargan desde keybinds-extra.lua si existe localmente
 
 -- Launcher
 hl.bind("SUPER + Space", hl.dsp.global("quickshell:searchToggleRelease"), { description = "Shell: Toggle search" })

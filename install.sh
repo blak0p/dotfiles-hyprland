@@ -19,8 +19,8 @@ deploy_symlink() {
     local src="$1" dst="$2"
     if [ -e "$dst" ] && [ ! -L "$dst" ]; then
         warn "Backing up $dst → $BACKUP_DIR/"
-        mkdir -p "$BACKUP_DIR/$(dirname "${dst#$HOME/}")"
-        mv "$dst" "$BACKUP_DIR/$(dirname "${dst#$HOME/}")/"
+        mkdir -p "$BACKUP_DIR/$(dirname "${dst#"$HOME"/}")"
+        mv "$dst" "$BACKUP_DIR/$(dirname "${dst#"$HOME"/}")/"
     fi
     if [ -L "$dst" ]; then
         local current
