@@ -11,7 +11,8 @@ session.json.atl/
 quickshell/Scripts/
 quickshell/modules/
 quickshell/services/
-quickshell/ii/Scripts/
+quickshell/ii/Scripts/*
+!quickshell/ii/Scripts/localsend.py
 quickshell/ii/services/CodexBar.qml
 quickshell/ii/Modules/Bar/Widgets/MainPanel/Dashboard/CodexBarCard.qml
 quickshell/ii/modules/ii/bar/CodexBarWidget.qml

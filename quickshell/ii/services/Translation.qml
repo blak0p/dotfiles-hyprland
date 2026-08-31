@@ -23,12 +23,24 @@ Singleton {
     property string generatedTranslationsDir: Directories.shellConfig + "/translations"
 
     property string languageCode: {
-        var configLang = Config?.options.language.ui ?? "auto";
+        var configLang = (typeof Config !== "undefined" && Config && Config.options && Config.options.language && Config.options.language.ui) ? Config.options.language.ui : "auto";
 
         if (configLang !== "auto")
             return configLang;
 
-        return Qt.locale().name;
+        let loc = Qt.locale().name;
+        if (loc.startsWith("es"))
+            return "es_MX";
+
+        if (root.availableLanguages.includes(loc))
+            return loc;
+
+        let prefix = loc.split("_")[0];
+        let fallback = root.availableLanguages.find(l => l.startsWith(prefix + "_"));
+        if (fallback)
+            return fallback;
+
+        return loc;
     }
 
     TranslationScanner {
@@ -79,7 +91,7 @@ Singleton {
         // Special cases
         if (!text) return "";
         var key = text.toString();
-        if (root.isLoading || (!root?.translations?.hasOwnProperty(key) && !root?.generatedTranslations?.hasOwnProperty(key)))
+        if (root.isLoading || (!(root.translations && root.translations.hasOwnProperty(key)) && !(root.generatedTranslations && root.generatedTranslations.hasOwnProperty(key))))
             return key;
         
         // Normal cases

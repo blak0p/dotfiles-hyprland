@@ -237,6 +237,25 @@ Screenshots automatically respect `~/.config/user-dirs.dirs` and `~/.config/illo
 
 ---
 
+## ✨ Animation Physics & Bezier Curves
+
+The desktop features high-performance physics-based animation curves designed for snappy responsiveness and fluid visual feedback:
+* **Window Transitions (`overshot` & `md3_decel`)**: Windows open and resize with an elastic overshot bezier curve (`cubic-bezier(0.05, 0.9, 0.1, 1.05)`), providing a lively, tactile pop without sluggish delay.
+* **Workspace Sliding (`workspace_anim`)**: Fast horizontal panning between workspaces with zero stutter.
+* **Quickshell Spring Physics**: Dynamic Island mode switches, notification notches, and drawer slides utilize spring physics (`damping: 0.75`, `response: 0.35s`) for natural kinetic movement.
+* **Game Mode Bypass**: Pressing the Game Mode quick toggle or switching power modes immediately drops all animations and blur to 0ms for absolute zero-latency competitive gaming.
+
+---
+
+## 🙏 Credits & Lineage
+
+This configuration is a heavily customized and modularized evolution built upon outstanding work from the open-source community:
+* **[end-4 / dots-hyprland (illogical-impulse)](https://github.com/end-4/dots-hyprland)**: The foundational Hyprland structure, Lua config architecture, and shell utilities.
+* **[Minflair / Quickshell](https://github.com/Minflair)**: The visual inspiration and core components for the Quickshell desktop surface, Dynamic Island, and widget ecosystem.
+* **[Wallfliper (Roberth-Souza)](https://github.com/Roberth-Souza/wallfliper)**: PySide6 video & still wallpaper manager with layer-shell integration.
+
+---
+
 ## 📄 License
 
 MIT License. Designed and maintained by **blak0p**.

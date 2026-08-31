@@ -68,6 +68,11 @@ Scope {
                 readonly property int barMarginSide: 8
                 readonly property int popupStartY: barMarginTop + barHeight + 8
 
+                property HyprlandMonitor monitor: Hyprland.monitorFor(surfaceLoader.modelData)
+                property list<HyprlandWorkspace> workspacesForMonitor: Hyprland.workspaces.values.filter(workspace => workspace.monitor && workspace.monitor.name == monitor.name)
+                property var activeWorkspaceWithFullscreen: workspacesForMonitor.filter(workspace => ((workspace.toplevels.values.filter(window => window.wayland?.fullscreen)[0] != undefined) && workspace.active))[0]
+                property bool isFullscreen: activeWorkspaceWithFullscreen != undefined
+
                 Connections {
                     target: barStrip
                     function onClockHoveredChanged() {
@@ -99,6 +104,7 @@ Scope {
                 PanelWindow {
                     id: barSurface
                     screen: surfaceLoader.modelData
+                    visible: !surface.isFullscreen
 
                     WlrLayershell.layer: WlrLayer.Top
                     color: "transparent"
@@ -127,6 +133,7 @@ Scope {
                 // Popup window (Unified Dynamic Island + tray menus)
                 PanelWindow {
                     id: popupSurface
+                    visible: !surface.isFullscreen || unifiedIsland.isExpanded
 
                     WlrLayershell.layer: WlrLayer.Overlay
                     WlrLayershell.exclusionMode: ExclusionMode.Ignore
