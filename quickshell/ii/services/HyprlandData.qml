@@ -22,20 +22,45 @@ Singleton {
     property var monitors: []
     property var layers: ({})
 
-    // Fullscreen gate for Dynamic Island: true only if a mapped, visible window is actually fullscreen
-    // hyprctl clients -j uses `fullscreen` (bool/int) and/or `fullscreenMode` (0 none, 1 maximize, 2 fullscreen)
-    readonly property bool hasFullscreen: windowList.some(w => {
-        const fs = w.fullscreenMode === 2 || w.fullscreenMode === 1 || w.fullscreen === true || w.fullscreen === 1;
-        if (!fs) return false;
-        if (w.hidden) return false;
-        if (w.mapped === false) return false;
-        return true;
-    })
+    // Fullscreen gate for Dynamic Island. Primary source is Hyprland's wayland fullscreen
+    // (covers both hyprland fullscreen SUPER+F and apps requesting fullscreen via wayland).
+    // Falls back to hyprctl windowList for cases where Toplevel hasn't updated yet.
+    readonly property bool hasFullscreen: {
+        // Check active workspaces for a wayland-fullscreen toplevel (same logic as Background.qml / MinflairBarSurface)
+        const wsList = Hyprland.workspaces.values;
+        for (let i = 0; i < wsList.length; i++) {
+            const ws = wsList[i];
+            if (!ws.active) continue;
+            const tops = ws.toplevels.values;
+            for (let j = 0; j < tops.length; j++) {
+                if (tops[j].wayland?.fullscreen) return true;
+            }
+        }
+        // Fallback: hyprctl windowList (hidden/mapped aware)
+        return windowList.some(w => {
+            const fs = w.fullscreenMode === 2 || w.fullscreenMode === 1 || w.fullscreen === true || w.fullscreen === 1 || w.fullscreen === 2;
+            if (!fs) return false;
+            if (w.hidden) return false;
+            if (w.mapped === false) return false;
+            return true;
+        });
+    }
 
     // Per-monitor check so switching workspace on DP-2 doesn't get suppressed by a fullscreen on HDMI
     function hasFullscreenOnMonitor(monitorId) {
+        // Try wayland fullscreen on that monitor first
+        const wsList = Hyprland.workspaces.values;
+        for (let i = 0; i < wsList.length; i++) {
+            const ws = wsList[i];
+            if (!ws.active) continue;
+            if (!ws.monitor || ws.monitor.id !== monitorId) continue;
+            const tops = ws.toplevels.values;
+            for (let j = 0; j < tops.length; j++) {
+                if (tops[j].wayland?.fullscreen) return true;
+            }
+        }
         return windowList.some(w => {
-            const fs = w.fullscreenMode === 2 || w.fullscreenMode === 1 || w.fullscreen === true || w.fullscreen === 1;
+            const fs = w.fullscreenMode === 2 || w.fullscreenMode === 1 || w.fullscreen === true || w.fullscreen === 1 || w.fullscreen === 2;
             if (!fs) return false;
             if (w.hidden) return false;
             if (w.mapped === false) return false;
