@@ -21,11 +21,15 @@ import qs.Modules.Bar.Widgets.MainPanel.Performance as MainPanelPerformance
 Rectangle {
     id: root
 
+    // Per-monitor fullscreen gate; bound from MinflairBarSurface.surface.isFullscreen when hosted there.
+    // Falls back to global HyprlandData.hasFullscreen when used standalone.
+    property bool isFullscreen: HyprlandData.hasFullscreen
+
     property string currentMode: {
         if (AppState.activePopup === "workspaceRename") return "workspaceRename";
         if (AppState.activePopup === "launcher") return "launcher";
         if (AppState.activePopup === "dashboard") return "dashboard";
-        if (IslandState.mode !== IslandState.modeIdle && IslandState.activeNotification !== null) return "notif";
+        if (!root.isFullscreen && IslandState.mode !== IslandState.modeIdle && IslandState.activeNotification !== null) return "notif";
         return "clock";
     }
 
@@ -790,6 +794,21 @@ Rectangle {
             MouseArea {
                 anchors.fill: parent
                 onClicked: AppState.activePopup = ""
+            }
+        }
+    }
+
+    // When entering fullscreen while a toast is visible, collapse it so it doesn't cover the fullscreen window
+    onIsFullscreenChanged: {
+        if (root.isFullscreen && IslandState.mode !== IslandState.modeIdle) {
+            IslandState.collapse();
+        }
+    }
+    Connections {
+        target: HyprlandData
+        function onHasFullscreenChanged() {
+            if (root.isFullscreen && root.currentMode === "notif") {
+                IslandState.collapse();
             }
         }
     }

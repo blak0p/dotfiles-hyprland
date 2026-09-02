@@ -22,6 +22,27 @@ Singleton {
     property var monitors: []
     property var layers: ({})
 
+    // Fullscreen gate for Dynamic Island: true only if a mapped, visible window is actually fullscreen
+    // hyprctl clients -j uses `fullscreen` (bool/int) and/or `fullscreenMode` (0 none, 1 maximize, 2 fullscreen)
+    readonly property bool hasFullscreen: windowList.some(w => {
+        const fs = w.fullscreenMode === 2 || w.fullscreenMode === 1 || w.fullscreen === true || w.fullscreen === 1;
+        if (!fs) return false;
+        if (w.hidden) return false;
+        if (w.mapped === false) return false;
+        return true;
+    })
+
+    // Per-monitor check so switching workspace on DP-2 doesn't get suppressed by a fullscreen on HDMI
+    function hasFullscreenOnMonitor(monitorId) {
+        return windowList.some(w => {
+            const fs = w.fullscreenMode === 2 || w.fullscreenMode === 1 || w.fullscreen === true || w.fullscreen === 1;
+            if (!fs) return false;
+            if (w.hidden) return false;
+            if (w.mapped === false) return false;
+            return w.monitor === monitorId;
+        });
+    }
+
     // Convenient stuff
 
     function toplevelsForWorkspace(workspace) {

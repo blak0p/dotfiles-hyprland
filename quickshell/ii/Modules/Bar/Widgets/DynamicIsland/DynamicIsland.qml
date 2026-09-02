@@ -3,12 +3,13 @@ import QtQuick.Layouts
 import qs.Core
 import qs.Core.Components
 import qs.Core.Services
+import qs.services
 
 Rectangle {
     id: root
 
     property var mainBarWidget: null
-    readonly property bool isNotifActive: IslandState.activeNotification !== null && !IslandState.isClosed(IslandState.activeNotification)
+    readonly property bool isNotifActive: !HyprlandData.hasFullscreen && IslandState.activeNotification !== null && !IslandState.isClosed(IslandState.activeNotification)
     readonly property bool isCritical: isNotifActive && IslandState.isCritical(IslandState.activeNotification)
 
     width: implicitWidth

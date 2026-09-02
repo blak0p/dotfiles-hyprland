@@ -7,12 +7,13 @@ import qs.Core
 import qs.Core.Components
 import qs.Core.Services
 import qs.Core.Windows
+import qs.services
 
 TopPopup {
     id: islandNotchPopup
 
     popupId: "dynamicIslandNotch"
-    isOpen: IslandState.mode === IslandState.modeExpandedNotch && IslandState.activeNotification !== null
+    isOpen: !HyprlandData.hasFullscreen && IslandState.mode === IslandState.modeExpandedNotch && IslandState.activeNotification !== null
     preferredWidth: 480
     preferredHeight: contentColumn.implicitHeight + Constants.sizeLg * 2
     autoCloseOnUnhover: false
