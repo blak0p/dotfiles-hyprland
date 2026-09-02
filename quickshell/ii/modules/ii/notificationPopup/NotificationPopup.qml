@@ -13,8 +13,13 @@ Scope {
 
     PanelWindow {
         id: root
-        visible: (Notifications.popupList.length > 0) && !GlobalStates.screenLocked
-        screen: Quickshell.screens.find(s => Config.options.notifications.forceMonitor.enable ? s.name === Config.options.notifications.forceMonitor.name : s.name === Hyprland.focusedMonitor?.name) ?? null
+        // Per-monitor gate: only show top-right popup when that monitor has a fullscreen window.
+        // Outside fullscreen the Dynamic Island handles it, so we avoid duplicate.
+        readonly property var targetScreen: Quickshell.screens.find(s => Config.options.notifications.forceMonitor.enable ? s.name === Config.options.notifications.forceMonitor.name : s.name === Hyprland.focusedMonitor?.name) ?? null
+        readonly property var targetMonitor: Hyprland.monitorFor(targetScreen)
+        readonly property bool isFullscreenOnTarget: targetMonitor ? HyprlandData.hasFullscreenOnMonitor(targetMonitor.id) : HyprlandData.hasFullscreen
+        visible: (Notifications.popupList.length > 0) && !GlobalStates.screenLocked && isFullscreenOnTarget
+        screen: targetScreen
 
         WlrLayershell.namespace: "quickshell:notificationPopup"
         WlrLayershell.layer: WlrLayer.Overlay
