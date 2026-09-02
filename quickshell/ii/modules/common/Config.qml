@@ -411,6 +411,7 @@ Singleton {
 
             property JsonObject osd: JsonObject {
                 property int timeout: 1000
+                property bool inIsland: true
             }
 
             property JsonObject osk: JsonObject {
