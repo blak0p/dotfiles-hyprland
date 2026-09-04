@@ -6,6 +6,7 @@ Rectangle {
 
     property string text: ""
     property color textColor: Theme.accent
+    property color baseColor: Theme.accent
     property bool disabled: false
     property alias mouseArea: buttonMouse
 
@@ -17,7 +18,7 @@ Rectangle {
     color: root.disabled ? Theme.bgSecondary : (buttonMouse.containsMouse ? Theme.bgTertiary : Theme.bgSecondary)
     scale: (buttonMouse.pressed && !root.disabled) ? 0.95 : 1
     border.width: root.disabled ? 0 : 1
-    border.color: root.disabled ? Theme.muted : Theme.accent
+    border.color: root.disabled ? Theme.muted : root.baseColor
 
     Row {
         id: buttonLayout
@@ -29,7 +30,7 @@ Rectangle {
             text: root.text
             font.pixelSize: Constants.sizeSm
             font.bold: true
-            color: root.disabled ? Theme.muted : Theme.accent
+            color: root.disabled ? Theme.muted : root.baseColor
             visible: root.text !== ""
             anchors.verticalCenter: parent.verticalCenter
         }
