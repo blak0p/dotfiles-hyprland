@@ -1,0 +1,18 @@
+[Unit]
+Description=LLaMA.cpp HTTP Server
+After=network.target
+
+[Service]
+Type=simple
+Environment="LLAMA_ARG_CTX_SIZE=16384"
+ExecStart=/usr/bin/llama-server --models-dir /home/alejandro/.models --models-preset /home/alejandro/.models/presets.ini --port 8090 --models-max 1 --sleep-idle-seconds 60 --ctx-size 16384
+WorkingDirectory=/home/alejandro/.models
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+ProtectHome=false
+ProtectSystem=full
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target
