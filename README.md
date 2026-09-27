@@ -68,6 +68,15 @@ Transitions fluidly across 4 operational modes:
 * **Idle / Clock Mode (`clock`)**: Compact pill displaying active workspace indicator, avatar, interactive clock (`HH:mm • ddd, d MMM`), and overflow Control Center button.
 * **Notification Notch Mode (`notif`)**: RichText popup with sender app icon, time elapsed, clickable URLs, image previews, inline interactive action buttons, and background progress bars. Pauses auto-dismissal timer on mouse hover.
 * **App Launcher Mode (`launcher`)**: Keyboard-driven fuzzy application finder (`Super + Space`) with category filters and vectorized application icons.
+* **Interactive AI Assistant Mode (`ai`)**:
+  * **Triggering**: Press `<Tab>` in the launcher search bar. If empty, switches to AI mode and triggers a background model pre-check/warmup. If a query is typed, pressing `<Tab>` directly submits it to the AI assistant.
+  * **Persistent Card Ergonomics**: Immediately expands to a full 720×520px floating card. **Strict Modal Persistence**: The AI card **never auto-dismisses** on outside clicks or focus loss — it stays pinned until you explicitly press `<Esc>` (or click the ESC button).
+  * **Zero-Latency Model Pre-Check**: Checks local `llama-server` (port 8090); if the `gemma-4` model is already loaded in memory, it skips the warming up status message entirely for instantaneous responsiveness.
+  * **Interactive Tool Timeline & Live Animations**:
+    * **Live Web Search (`web_search`)**: Animated search indicator with live DuckDuckGo query status.
+    * **Filesystem Inspection (`read_file`, `list_dir`)**: Inspects local files and directories with dedicated icons.
+    * **Expandable Action Timeline**: Chronological tool pills showing status (Running/Done); click any completed tool card to inspect its snippet preview.
+  * **Ephemeral Session**: Context is retained for follow-up questions while open, and cleanly purged upon pressing `<Esc>`.
 * **Dashboard Dropdown (`dashboard`)**: Multi-tab drawer revealing:
   * **Dashboard Tab**: Mini music player, motivational quote widget, and system update tracker.
   * **Performance Tab (`Performance.qml`)**: Real-time telemetry cards:

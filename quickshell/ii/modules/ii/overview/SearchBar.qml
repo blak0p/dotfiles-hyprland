@@ -90,8 +90,33 @@ RowLayout {
             }
         }
 
+        Keys.priority: Keys.BeforeItem
+        Keys.onTabPressed: event => {
+            if (text.trim() !== "") {
+                if (LauncherSearch.results.length === 0 || text.startsWith("??") || text.endsWith("?")) {
+                    const q = text.replace(/^\?\?\s*/, "").trim();
+                    text = "";
+                    GlobalStates.overviewOpen = false;
+                    AppState.activePopup = "ai";
+                    IslandAiService.ask(q);
+                    event.accepted = true;
+                    return;
+                }
+            }
+        }
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Tab) {
+                if (text.trim() !== "") {
+                    if (LauncherSearch.results.length === 0 || text.startsWith("??") || text.endsWith("?")) {
+                        const q = text.replace(/^\?\?\s*/, "").trim();
+                        text = "";
+                        GlobalStates.overviewOpen = false;
+                        AppState.activePopup = "ai";
+                        IslandAiService.ask(q);
+                        event.accepted = true;
+                        return;
+                    }
+                }
                 if (LauncherSearch.results.length === 0) return;
                 const tabbedText = LauncherSearch.results[0].name;
                 LauncherSearch.query = tabbedText;

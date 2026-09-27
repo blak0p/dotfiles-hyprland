@@ -26,6 +26,7 @@ Rectangle {
     property bool isFullscreen: HyprlandData.hasFullscreen
 
     property string currentMode: {
+        if (root.isAiMode || AppState.activePopup === "ai") return "ai";
         if (AppState.activePopup === "workspaceRename") return "workspaceRename";
         if (AppState.activePopup === "launcher") return "launcher";
         if (AppState.activePopup === "dashboard" || AppState.activePopup === "controlCenter") return "dashboard";
@@ -34,9 +35,10 @@ Rectangle {
         return "clock";
     }
 
+    property bool isAiMode: AppState.activePopup === "ai"
     readonly property bool isNotifActive: currentMode === "notif"
     readonly property bool isCritical: isNotifActive && IslandState.isCritical(IslandState.activeNotification)
-    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard" || currentMode === "notif" || currentMode === "workspaceRename" || currentMode === "volume"
+    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard" || currentMode === "notif" || currentMode === "workspaceRename" || currentMode === "volume" || currentMode === "ai"
 
     width: implicitWidth
     height: implicitHeight
@@ -64,6 +66,7 @@ Rectangle {
             }
             return 680;
         }
+        if (currentMode === "ai") return 720;
         if (currentMode === "launcher") return searchQuery !== "" ? 720 : 480;
         if (currentMode === "notif") return 480;
         return idleContentRow.implicitWidth + 32;
@@ -88,6 +91,7 @@ Rectangle {
 
             return 580;
         }
+        if (currentMode === "ai") return 520;
         if (currentMode === "launcher") {
             if (searchQuery === "") return 48;
             if (searchModel.count === 0) return 170;
@@ -323,7 +327,7 @@ Rectangle {
 
                 ThemedText {
                     text: {
-                        let app = IslandState.activeNotification?.appName || "Notificación";
+                        let app = IslandState.activeNotification?.appName || Translation.tr("Notification");
                         let count = IslandState.activeNotification?.appMessageCount || 1;
                         return count > 1 ? (app + " (" + count + ")") : app;
                     }
@@ -502,6 +506,15 @@ Rectangle {
 
     ListModel { id: searchModel }
 
+    function switchToAi(q) {
+        if (!q || q.trim() === "") return;
+        const queryText = q.replace(/^\?\?\s*/, "").trim();
+        root.searchQuery = "";
+        if (searchInput) searchInput.text = "";
+        AppState.openPopup("ai");
+        IslandAiService.ask(queryText);
+    }
+
     function updateSearchModel() {
         searchModel.clear();
         if (root.searchQuery === "") return;
@@ -511,7 +524,7 @@ Rectangle {
             const entry = results[i];
             searchModel.append({
                 name: entry.name || "",
-                category: (entry.categories && entry.categories.length > 0) ? entry.categories[0] : (entry.comment || "Aplicación"),
+                category: (entry.categories && entry.categories.length > 0) ? entry.categories[0] : (entry.comment || Translation.tr("App")),
                 iconName: entry.icon || "application-x-executable",
                 rawEntry: entry
             });
@@ -560,7 +573,8 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
                 focus: root.currentMode === "launcher"
-                placeholderText: "Search applications, commands (>)..."
+                activeFocusOnTab: false
+                placeholderText: Translation.tr("Search apps, or press Tab to chat with AI...")
                 placeholderTextColor: Theme.muted
                 font.family: Constants.fontFamily
                 font.pixelSize: 14
@@ -575,10 +589,30 @@ Rectangle {
                     updateSearchModel();
                 }
 
+                Keys.priority: Keys.BeforeItem
+                Keys.onTabPressed: (event) => {
+                    if (text.trim() !== "") {
+                        root.switchToAi(text);
+                    } else {
+                        text = "";
+                        AppState.openPopup("ai");
+                        IslandAiService.warmup();
+                    }
+                    event.accepted = true;
+                }
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Escape) {
                         if (text !== "") text = "";
                         else AppState.activePopup = "";
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Tab) {
+                        if (text.trim() !== "") {
+                            root.switchToAi(text);
+                        } else {
+                            text = "";
+                            AppState.openPopup("ai");
+                            IslandAiService.warmup();
+                        }
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Down) {
                         if (searchListView.count > 0) {
@@ -597,6 +631,8 @@ Rectangle {
                     if (searchListView.count > 0 && root.selectedIndex >= 0 && root.selectedIndex < searchListView.count) {
                         const item = searchModel.get(root.selectedIndex);
                         if (item && item.rawEntry) launchEntry(item.rawEntry);
+                    } else if (text.trim() !== "") {
+                        root.switchToAi(text);
                     }
                 }
             }
@@ -701,7 +737,395 @@ Rectangle {
     }
 
     // ==========================================
-    // 4. WORKSPACE RENAME VIEW
+    // 4. AI AGENT VIEW
+    // ==========================================
+    ColumnLayout {
+        id: aiContainer
+        anchors.fill: parent
+        anchors.margins: 14
+        spacing: 8
+        opacity: root.currentMode === "ai" ? 1 : 0
+        visible: opacity > 0
+
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 32
+            spacing: 12
+
+            SvgIcon {
+                icon: "sparkles"
+                iconColor: IslandAiService.running ? Theme.accent : Theme.muted
+                iconSize: 20
+                flat: true
+                Layout.alignment: Qt.AlignVCenter
+
+                RotationAnimation on rotation {
+                    loops: Animation.Infinite
+                    from: 0
+                    to: 360
+                    duration: 2000
+                    running: IslandAiService.running
+                }
+            }
+
+            TextField {
+                id: aiInput
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                focus: root.currentMode === "ai"
+                placeholderText: IslandAiService.prompt === "" ? Translation.tr("Ask anything (e.g. search web, inspect files)...") : Translation.tr("Ask a follow-up...")
+                placeholderTextColor: Theme.muted
+                font.family: Constants.fontFamily
+                font.pixelSize: 14
+                color: Theme.fg
+                background: null
+                leftPadding: 0
+                rightPadding: 0
+
+                onAccepted: {
+                    if (text.trim() !== "") {
+                        IslandAiService.ask(text.trim());
+                        text = "";
+                    }
+                }
+
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Escape) {
+                        IslandAiService.clearSession();
+                        AppState.activePopup = "";
+                        event.accepted = true;
+                    }
+                }
+            }
+            
+            Rectangle {
+                visible: IslandAiService.status !== "" || IslandAiService.activeTool !== ""
+                Layout.preferredHeight: 24
+                radius: 12
+                color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.12)
+                border.width: 1
+                border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.3)
+                implicitWidth: aiStatusRow.implicitWidth + 16
+                Layout.alignment: Qt.AlignVCenter
+
+                SequentialAnimation on opacity {
+                    loops: Animation.Infinite
+                    running: IslandAiService.running
+                    NumberAnimation { from: 0.6; to: 1.0; duration: 600; easing.type: Easing.InOutQuad }
+                    NumberAnimation { from: 1.0; to: 0.6; duration: 600; easing.type: Easing.InOutQuad }
+                }
+
+                RowLayout {
+                    id: aiStatusRow
+                    anchors.centerIn: parent
+                    spacing: 6
+
+                    SvgIcon {
+                        icon: IslandAiService.activeTool === "web_search" ? "search" : (IslandAiService.activeTool === "list_dir" ? "dashboard" : (IslandAiService.activeTool === "read_file" ? "code" : "sparkles"))
+                        iconSize: 12
+                        iconColor: Theme.accent
+                        flat: true
+                        Layout.alignment: Qt.AlignVCenter
+
+                        RotationAnimation on rotation {
+                            loops: Animation.Infinite
+                            from: 0
+                            to: 360
+                            duration: 1500
+                            running: IslandAiService.activeTool !== ""
+                        }
+                    }
+
+                    ThemedText {
+                        text: IslandAiService.status
+                        font.pixelSize: 11
+                        font.bold: true
+                        color: Theme.accent
+                        Layout.alignment: Qt.AlignVCenter
+                        elide: Text.ElideRight
+                        Layout.maximumWidth: 260
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.preferredHeight: 22
+                Layout.preferredWidth: 38
+                Layout.alignment: Qt.AlignVCenter
+                radius: 11
+                color: Qt.rgba(1, 1, 1, 0.08)
+
+                ThemedText {
+                    anchors.centerIn: parent
+                    text: "ESC"
+                    font.pixelSize: Constants.size3Xs
+                    font.bold: true
+                    color: Theme.muted
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        IslandAiService.clearSession();
+                        AppState.activePopup = "";
+                    }
+                }
+            }
+        }
+
+        ScrollView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+
+            ColumnLayout {
+                id: aiCardColumn
+                width: parent.width
+                spacing: 10
+
+                // 1. Fresh empty state
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 40
+                    spacing: 12
+                    visible: IslandAiService.prompt === "" && !IslandAiService.running
+                    Layout.alignment: Qt.AlignHCenter
+
+                    SvgIcon {
+                        icon: "sparkles"
+                        iconSize: 36
+                        iconColor: Theme.accent
+                        flat: true
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    ThemedText {
+                        text: Translation.tr("Dynamic Island AI")
+                        font.pixelSize: 18
+                        font.bold: true
+                        color: Theme.fg
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    ThemedText {
+                        text: Translation.tr("Ask anything... Type your query or press Tab to switch modes. Press Esc to exit.")
+                        font.pixelSize: 13
+                        color: Theme.muted
+                        Layout.alignment: Qt.AlignHCenter
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+
+                    RowLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 8
+                        Layout.topMargin: 8
+
+                        Rectangle {
+                            radius: 12
+                            color: Qt.rgba(1, 1, 1, 0.05)
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.08)
+                            implicitWidth: pill1Text.implicitWidth + 20
+                            implicitHeight: 28
+
+                            ThemedText {
+                                id: pill1Text
+                                anchors.centerIn: parent
+                                text: "🌐 " + Translation.tr("Live Web Search")
+                                font.pixelSize: 11
+                                color: Theme.muted
+                            }
+                        }
+
+                        Rectangle {
+                            radius: 12
+                            color: Qt.rgba(1, 1, 1, 0.05)
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.08)
+                            implicitWidth: pill2Text.implicitWidth + 20
+                            implicitHeight: 28
+
+                            ThemedText {
+                                id: pill2Text
+                                anchors.centerIn: parent
+                                text: "📁 " + Translation.tr("Filesystem Inspection")
+                                font.pixelSize: 11
+                                color: Theme.muted
+                            }
+                        }
+
+                        Rectangle {
+                            radius: 12
+                            color: Qt.rgba(1, 1, 1, 0.05)
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.08)
+                            implicitWidth: pill3Text.implicitWidth + 20
+                            implicitHeight: 28
+
+                            ThemedText {
+                                id: pill3Text
+                                anchors.centerIn: parent
+                                text: "⚡ " + Translation.tr("Local Gemma-4")
+                                font.pixelSize: 11
+                                color: Theme.muted
+                            }
+                        }
+                    }
+                }
+
+                // 2. User prompt bubble
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: promptText.implicitHeight + 14
+                    color: Qt.rgba(1, 1, 1, 0.04)
+                    border.width: 1
+                    border.color: Qt.rgba(1, 1, 1, 0.06)
+                    radius: 8
+                    visible: IslandAiService.prompt !== ""
+
+                    ThemedText {
+                        id: promptText
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        text: IslandAiService.prompt
+                        color: Theme.fg
+                        font.pixelSize: 13
+                        wrapMode: Text.Wrap
+                    }
+                }
+
+                // 3. Tool Activity Timeline
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    visible: IslandAiService.toolHistory && IslandAiService.toolHistory.length > 0
+
+                    Repeater {
+                        model: IslandAiService.toolHistory
+                        delegate: Rectangle {
+                            id: toolItem
+                            required property var modelData
+                            required property int index
+
+                            property bool expanded: false
+
+                            Layout.fillWidth: true
+                            implicitHeight: toolCol.implicitHeight + 14
+                            radius: 8
+                            color: Qt.rgba(1, 1, 1, 0.04)
+                            border.width: 1
+                            border.color: modelData.status === "running" ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.4) : Qt.rgba(1, 1, 1, 0.08)
+
+                            Behavior on border.color { ColorAnimation { duration: 180 } }
+
+                            ColumnLayout {
+                                id: toolCol
+                                anchors.fill: parent
+                                anchors.margins: 8
+                                spacing: 6
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    SvgIcon {
+                                        icon: modelData.name === "web_search" ? "search" : (modelData.name === "list_dir" ? "dashboard" : "code")
+                                        iconSize: 14
+                                        iconColor: modelData.status === "running" ? Theme.accent : Theme.muted
+                                        flat: true
+                                        Layout.alignment: Qt.AlignVCenter
+
+                                        RotationAnimation on rotation {
+                                            loops: Animation.Infinite
+                                            from: 0
+                                            to: 360
+                                            duration: 1200
+                                            running: modelData.status === "running"
+                                        }
+                                    }
+
+                                    ThemedText {
+                                        text: {
+                                            if (modelData.name === "web_search") return Translation.tr("Web search: \"%1\"").arg(modelData.detail);
+                                            if (modelData.name === "read_file") return Translation.tr("Read file: %1").arg(modelData.detail);
+                                            if (modelData.name === "list_dir") return Translation.tr("List directory: %1").arg(modelData.detail);
+                                            return modelData.name + ": " + modelData.detail;
+                                        }
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                        color: Theme.fg
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideMiddle
+                                    }
+
+                                    Rectangle {
+                                        Layout.preferredHeight: 18
+                                        implicitWidth: tStatus.implicitWidth + 12
+                                        radius: 9
+                                        color: modelData.status === "running" ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.15) : Qt.rgba(0.2, 0.8, 0.4, 0.15)
+
+                                        ThemedText {
+                                            id: tStatus
+                                            anchors.centerIn: parent
+                                            text: modelData.status === "running" ? Translation.tr("Running...") : Translation.tr("Done")
+                                            font.pixelSize: 10
+                                            font.bold: true
+                                            color: modelData.status === "running" ? Theme.accent : "#4ade80"
+                                        }
+                                    }
+                                }
+
+                                ThemedText {
+                                    visible: toolItem.expanded && modelData.preview !== ""
+                                    text: modelData.preview || ""
+                                    font.pixelSize: 11
+                                    color: Theme.muted
+                                    wrapMode: Text.Wrap
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 22
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: toolItem.expanded = !toolItem.expanded
+                            }
+                        }
+                    }
+                }
+
+                // 4. Response Text
+                Text {
+                    Layout.fillWidth: true
+                    text: IslandAiService.response
+                    textFormat: Text.MarkdownText
+                    wrapMode: Text.Wrap
+                    color: Theme.fg
+                    visible: IslandAiService.response !== ""
+                    font.pixelSize: 14
+                    lineHeight: 1.3
+                    onLinkActivated: (link) => Qt.openUrlExternally(link)
+                }
+
+                // 5. Error text
+                ThemedText {
+                    Layout.fillWidth: true
+                    text: IslandAiService.error
+                    color: "#ff6b6b"
+                    font.pixelSize: 14
+                    wrapMode: Text.Wrap
+                    visible: IslandAiService.error !== ""
+                }
+            }
+        }
+    }
+
+    // ==========================================
+    // 5. WORKSPACE RENAME VIEW
     // ==========================================
     readonly property int activeWsId: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
 
@@ -852,6 +1276,12 @@ Rectangle {
             if (AppState.activePopup === "controlCenter") {
                 root.dashboardActiveTab = 3;
             }
+            if (AppState.activePopup === "") {
+                if (IslandAiService.running) {
+                    IslandAiService.cancel();
+                }
+                IslandAiService.clearSession();
+            }
         }
     }
 
@@ -861,6 +1291,10 @@ Rectangle {
             Qt.callLater(() => {
                 searchInput.text = "";
                 searchInput.forceActiveFocus();
+            });
+        } else if (currentMode === "ai") {
+            Qt.callLater(() => {
+                if (aiInput) aiInput.forceActiveFocus();
             });
         } else if (currentMode === "workspaceRename") {
             Qt.callLater(() => {

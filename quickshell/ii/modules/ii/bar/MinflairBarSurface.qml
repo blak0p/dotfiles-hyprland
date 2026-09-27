@@ -138,9 +138,9 @@ Scope {
 
                     WlrLayershell.layer: WlrLayer.Overlay
                     WlrLayershell.exclusionMode: ExclusionMode.Ignore
-                    WlrLayershell.keyboardFocus: (unifiedIsland.currentMode === "launcher" || unifiedIsland.currentMode === "workspaceRename") ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+                    WlrLayershell.keyboardFocus: (unifiedIsland.currentMode === "launcher" || unifiedIsland.currentMode === "workspaceRename" || unifiedIsland.currentMode === "ai") ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
                     color: "transparent"
-                    focusable: (unifiedIsland.currentMode === "launcher" || unifiedIsland.currentMode === "workspaceRename")
+                    focusable: (unifiedIsland.currentMode === "launcher" || unifiedIsland.currentMode === "workspaceRename" || unifiedIsland.currentMode === "ai")
                     screen: surfaceLoader.modelData
 
                     anchors {
@@ -251,6 +251,32 @@ Scope {
         }
         function clipboardToggle(): void {
             AppState.togglePopup("launcher");
+        }
+    }
+
+    IpcHandler {
+        target: "ai"
+
+        function toggle(): void {
+            if (AppState.activePopup === "ai") {
+                IslandAiService.clearSession();
+                AppState.activePopup = "";
+            } else {
+                AppState.openPopup("ai");
+            }
+        }
+        function open(): void {
+            AppState.openPopup("ai");
+        }
+        function ask(query: string): void {
+            AppState.activePopup = "ai";
+            IslandAiService.ask(query);
+        }
+        function close(): void {
+            if (AppState.activePopup === "ai") {
+                IslandAiService.clearSession();
+                AppState.activePopup = "";
+            }
         }
     }
 

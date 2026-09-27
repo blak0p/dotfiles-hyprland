@@ -90,3 +90,4 @@ singleton Wallpapers 1.0 Wallpapers.qml
 singleton Weather 1.0 Weather.qml
 singleton WeatherService 1.0 WeatherService.qml
 singleton Ydotool 1.0 Ydotool.qml
+singleton IslandAiService 1.0 IslandAiService.qml

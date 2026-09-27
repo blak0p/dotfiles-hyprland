@@ -143,7 +143,8 @@ TopPopup {
                 Layout.minimumWidth: 0
                 Layout.alignment: Qt.AlignVCenter
                 focus: true
-                placeholderText: launcherPopup.searchQuery === "" ? "Buscar apps, comandos (>), cálculos (=)..." : ""
+                activeFocusOnTab: false
+                placeholderText: launcherPopup.searchQuery === "" ? Translation.tr("Search apps, commands (>), math (=), or press Tab for AI...") : ""
                 placeholderTextColor: Theme.muted
                 font.family: Constants.fontFamily
                 font.pixelSize: 14
@@ -160,6 +161,19 @@ TopPopup {
                     updateSearchModel();
                 }
 
+                Keys.priority: Keys.BeforeItem
+                Keys.onTabPressed: (event) => {
+                    const q = text.replace(/^\?\?\s*/, "").trim();
+                    text = "";
+                    launcherPopup.isOpen = false;
+                    AppState.openPopup("ai");
+                    if (q !== "") {
+                        IslandAiService.ask(q);
+                    } else {
+                        IslandAiService.warmup();
+                    }
+                    event.accepted = true;
+                }
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Escape) {
                         if (text !== "") {
@@ -170,12 +184,14 @@ TopPopup {
                         }
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Tab) {
-                        if (launcherPopup.searchQuery !== "" && searchListView.count > 0 && launcherPopup.selectedIndex >= 0) {
-                            const item = searchModel.get(launcherPopup.selectedIndex);
-                            if (item && item.name) {
-                                text = item.name;
-                                cursorPosition = text.length;
-                            }
+                        const q = text.replace(/^\?\?\s*/, "").trim();
+                        text = "";
+                        launcherPopup.isOpen = false;
+                        AppState.openPopup("ai");
+                        if (q !== "") {
+                            IslandAiService.ask(q);
+                        } else {
+                            IslandAiService.warmup();
                         }
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Down) {
@@ -411,7 +427,7 @@ TopPopup {
             const entry = results[i];
             searchModel.append({
                 name: entry.name || "",
-                category: (entry.categories && entry.categories.length > 0) ? entry.categories[0] : (entry.comment || "Aplicación"),
+                category: (entry.categories && entry.categories.length > 0) ? entry.categories[0] : (entry.comment || Translation.tr("App")),
                 iconName: entry.icon || "application-x-executable",
                 rawEntry: entry
             });
