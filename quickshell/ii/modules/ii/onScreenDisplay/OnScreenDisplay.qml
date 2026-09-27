@@ -32,7 +32,6 @@ Scope {
     ]
 
     function triggerOsd() {
-        if (Config.options.osd.inIsland) return;
         GlobalStates.osdVolumeOpen = true;
         osdTimeout.restart();
     }
@@ -51,7 +50,6 @@ Scope {
     Connections {
         target: Brightness
         function onBrightnessChanged() {
-            if (Config.options.osd.inIsland) return;
             root.protectionMessage = "";
             root.currentIndicator = "brightness";
             root.triggerOsd();
@@ -61,7 +59,6 @@ Scope {
     Connections {
         target: Hyprsunset
         function onGammaChangeAttempt() {
-            if (Config.options.osd.inIsland) return;
             root.protectionMessage = "";
             root.currentIndicator = "gamma";
             root.triggerOsd();
@@ -72,14 +69,12 @@ Scope {
         // Listen to volume changes
         target: Audio.sink?.audio ?? null
         function onVolumeChanged() {
-            if (Config.options.osd.inIsland) return;
             if (!Audio.ready)
                 return;
             root.currentIndicator = "volume";
             root.triggerOsd();
         }
         function onMutedChanged() {
-            if (Config.options.osd.inIsland) return;
             if (!Audio.ready)
                 return;
             root.currentIndicator = "volume";
@@ -91,7 +86,6 @@ Scope {
         // Listen to protection triggers
         target: Audio
         function onSinkProtectionTriggered(reason) {
-            if (Config.options.osd.inIsland) return;
             root.protectionMessage = reason;
             root.currentIndicator = "volume";
             root.triggerOsd();

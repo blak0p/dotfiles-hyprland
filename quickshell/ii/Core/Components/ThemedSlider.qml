@@ -75,7 +75,12 @@ RowLayout {
             id: valueText
 
             anchors.centerIn: parent
-            text: root.value.toFixed(root.decimals) + root.suffix
+            text: {
+                if (root.to <= 2.5) {
+                    return Math.round(root.value * 100) + (root.suffix.length > 0 ? root.suffix : "%");
+                }
+                return root.value.toFixed(root.decimals) + root.suffix;
+            }
             font.pixelSize: Constants.sizeXs + 2
             font.bold: true
             color: !root.enabled ? Theme.muted : Theme.fg

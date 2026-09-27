@@ -52,7 +52,6 @@ ColumnLayout {
             }
         })
         onActivated: (index) => {
-            print(index)
             const item = root.devices[index]
             if (root.isSink) {
                 Audio.setDefaultSink(item)

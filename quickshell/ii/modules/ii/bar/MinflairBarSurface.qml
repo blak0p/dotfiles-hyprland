@@ -168,7 +168,7 @@ Scope {
                     Connections {
                         target: GlobalFocusGrab
                         function onDismissed() {
-                            if (AppState.activePopup === "launcher" || AppState.activePopup === "dashboard" || AppState.activePopup === "controlCenter" || AppState.activePopup === "workspaceRename") {
+                            if (AppState.activePopup === "launcher" || AppState.activePopup === "dashboard" || AppState.activePopup === "workspaceRename") {
                                 AppState.activePopup = "";
                             }
                         }
@@ -326,6 +326,27 @@ Scope {
         name: "workspaceRename"
         description: "Opens workspace rename in Dynamic Island"
         onPressed: AppState.openPopup("workspaceRename")
+    }
+
+    IpcHandler {
+        target: "controlCenter"
+
+        function toggle(): void {
+            AppState.togglePopup("controlCenter");
+        }
+        function open(): void {
+            AppState.openPopup("controlCenter");
+        }
+        function close(): void {
+            if (AppState.activePopup === "controlCenter")
+                AppState.activePopup = "";
+        }
+    }
+
+    GlobalShortcut {
+        name: "controlCenterToggle"
+        description: "Toggles Control Center"
+        onPressed: AppState.togglePopup("controlCenter")
     }
 }
 

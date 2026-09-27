@@ -16,7 +16,7 @@ Rectangle {
     implicitHeight: buttonLayout.implicitHeight + Constants.sizeLg
     radius: Constants.sizeLg
     color: root.disabled ? Theme.bgSecondary : (buttonMouse.containsMouse ? Theme.bgTertiary : Theme.bgSecondary)
-    scale: (buttonMouse.pressed && !root.disabled) ? 0.95 : 1
+    scale: (buttonMouse.pressed && !root.disabled) ? 0.94 : (buttonMouse.containsMouse && !root.disabled ? 1.02 : 1.0)
     border.width: root.disabled ? 0 : 1
     border.color: root.disabled ? Theme.muted : root.baseColor
 
@@ -34,7 +34,6 @@ Rectangle {
             visible: root.text !== ""
             anchors.verticalCenter: parent.verticalCenter
         }
-
     }
 
     MouseArea {
@@ -46,15 +45,15 @@ Rectangle {
         onClicked: {
             if (!root.disabled)
                 root.clicked();
-
         }
     }
 
     Behavior on scale {
         NumberAnimation {
-            duration: Constants.animUltraFast
+            duration: Constants.animFast
+            easing.type: Easing.OutBack
+            easing.overshoot: 1.15
         }
-
     }
 
     Behavior on color {

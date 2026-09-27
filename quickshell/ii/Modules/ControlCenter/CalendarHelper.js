@@ -1,11 +1,11 @@
 const weekDays = [
-    { day: 'Lu', full: 'Lunes' },
-    { day: 'Ma', full: 'Martes' },
-    { day: 'Mi', full: 'Miércoles' },
-    { day: 'Ju', full: 'Jueves' },
-    { day: 'Vi', full: 'Viernes' },
-    { day: 'Sá', full: 'Sábado' },
-    { day: 'Do', full: 'Domingo' },
+    { day: 'Mo', full: 'Monday' },
+    { day: 'Tu', full: 'Tuesday' },
+    { day: 'We', full: 'Wednesday' },
+    { day: 'Th', full: 'Thursday' },
+    { day: 'Fr', full: 'Friday' },
+    { day: 'Sa', full: 'Saturday' },
+    { day: 'Su', full: 'Sunday' },
 ];
 
 function isLeapYear(year) {

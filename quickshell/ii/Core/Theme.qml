@@ -40,6 +40,64 @@ QtObject {
     property color accent: themes[0].dark.accent
     property color accentComplementary: themes[0].dark.accentComplementary
     property color shadow: Qt.rgba(0, 0, 0, 0.45)
+    property color _rawShadow: shadow
+
+    // Impasto Token Aliases & Semantic Tokens
+    readonly property color island: bg
+    readonly property color islandSurface: bgSecondary
+    readonly property color islandSurfaceHover: bgTertiary
+    readonly property color islandBorder: border
+    readonly property color surface: bgSecondary
+    readonly property color surfaceHover: bgTertiary
+    readonly property color text: fg
+    readonly property color textMuted: muted
+    readonly property color accentHover: Qt.lighter(accent, 1.15)
+    readonly property color accentText: "#ffffff"
+    readonly property color red: "#ff453a"
+    readonly property color green: "#32d74b"
+    readonly property color yellow: "#ffd60a"
+    readonly property color blue: "#0a84ff"
+    readonly property color scrim: "#bf000000"
+    readonly property color scrimText: "#ffffff"
+    readonly property color hairline: Qt.rgba(fg.r, fg.g, fg.b, 0.08)
+    readonly property color paperWash: "#c4ffffff"
+    readonly property color paperInk: "#1c1c1e"
+    readonly property color paperInkMuted: "#8a1c1c1e"
+    readonly property color paperLine: "#261c1c1e"
+    readonly property int paperRadius: 10
+    readonly property real pictureCorner: 0.24
+    readonly property int radiusSmall: 8
+    readonly property int radiusMedium: 12
+    readonly property int radiusLarge: 18
+    readonly property int radiusPill: 999
+    readonly property int durationFast: 140
+    readonly property int durationMedium: 200
+    readonly property int durationSlow: 300
+    readonly property int durationMorph: 260
+    readonly property int paletteTransition: 260
+    readonly property var easing: Easing.OutCubic
+    readonly property string fontFamily: Constants.fontFamily || "Rubik, sans-serif"
+    readonly property string fontMono: "JetBrainsMono Nerd Font, monospace"
+    readonly property string fontHand: "Caveat, cursive"
+    readonly property string fontSignature: "Brush Script MT, cursive"
+    readonly property int fontSizeLabel: 11
+    readonly property int fontSizeSmall: 13
+    readonly property int fontSizeRegular: 14
+    readonly property int fontSizeMedium: 16
+    readonly property int fontSizeLarge: 20
+    readonly property int fontSizeWidget: 32
+
+    // Control Centre Grid Tokens
+    readonly property int centreColumns: 4
+    readonly property int centreRows: 5
+    readonly property int centreCellWidth: 202
+    readonly property int centreCellHeight: 86
+    readonly property int centreGutter: 12
+    readonly property int centreStrideX: 214
+    readonly property int centreStrideY: 98
+    readonly property int centrePagerLane: 18
+    readonly property int panelPadding: 20
+
     property bool generateFromWallpaper: false
     property var wallpaperColors: null
     property Process saver

@@ -18,36 +18,83 @@ ColumnLayout {
     // Month header
     RowLayout {
         Layout.fillWidth: true
+        spacing: 8
+
+        Rectangle {
+            Layout.preferredWidth: 26
+            Layout.preferredHeight: 26
+            radius: 13
+            color: calPrevHover.containsMouse ? Theme.bgTertiary : Qt.rgba(1, 1, 1, 0.04)
+            scale: calPrevHover.pressed ? 0.90 : (calPrevHover.containsMouse ? 1.08 : 1.0)
+            Behavior on scale { NumberAnimation { duration: Constants.animFast; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
+            Behavior on color { ColorAnimation { duration: Constants.animFast } }
+
+            SvgIcon {
+                anchors.centerIn: parent
+                icon: "chevron-left"
+                iconSize: 12
+                flat: true
+                iconColor: calPrevHover.containsMouse ? Theme.accent : Theme.fg
+            }
+
+            MouseArea {
+                id: calPrevHover
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.monthShift--
+            }
+        }
 
         ThemedText {
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
             text: {
                 const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
                                     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-                return monthNames[root.viewingDate.getMonth()] + " " + root.viewingDate.getFullYear();
+                const d = root.viewingDate;
+                return d ? (monthNames[d.getMonth()] + " " + d.getFullYear()) : "";
             }
             font.bold: true
             font.pixelSize: Constants.sizeSm
             color: Theme.fg
         }
 
-        Item { Layout.fillWidth: true }
+        Rectangle {
+            Layout.preferredWidth: 26
+            Layout.preferredHeight: 26
+            radius: 13
+            color: calNextHover.containsMouse ? Theme.bgTertiary : Qt.rgba(1, 1, 1, 0.04)
+            scale: calNextHover.pressed ? 0.90 : (calNextHover.containsMouse ? 1.08 : 1.0)
+            Behavior on scale { NumberAnimation { duration: Constants.animFast; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
+            Behavior on color { ColorAnimation { duration: Constants.animFast } }
 
-        SvgIcon {
-            icon: "chevron-left"
-            iconSize: Constants.sizeLg
-            flat: true
-            iconColor: Theme.fg
-            HoverHandler { cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: root.monthShift-- }
+            SvgIcon {
+                anchors.centerIn: parent
+                icon: "chevron-right"
+                iconSize: 12
+                flat: true
+                iconColor: calNextHover.containsMouse ? Theme.accent : Theme.fg
+            }
+
+            MouseArea {
+                id: calNextHover
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.monthShift++
+            }
         }
+    }
 
-        SvgIcon {
-            icon: "chevron-right"
-            iconSize: Constants.sizeLg
-            flat: true
-            iconColor: Theme.fg
-            HoverHandler { cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: root.monthShift++ }
+    // Wheel Handler for Month Scrolling
+    WheelHandler {
+        onWheel: (event) => {
+            if (event.angleDelta.y > 0) {
+                root.monthShift--;
+            } else if (event.angleDelta.y < 0) {
+                root.monthShift++;
+            }
         }
     }
 

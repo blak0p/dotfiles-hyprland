@@ -10,8 +10,8 @@ RowLayout {
     spacing: 4
 
     readonly property int unreadCount: {
-        if (typeof Notifications !== "undefined" && Notifications.list)
-            return Notifications.list.length;
+        if (typeof Notifications !== "undefined" && Notifications.unread !== undefined)
+            return Notifications.unread;
         if (notificationService && notificationService.unreadCount !== undefined)
             return notificationService.unreadCount;
         return 0;
@@ -36,7 +36,9 @@ RowLayout {
         Layout.preferredHeight: 16
         Layout.preferredWidth: Math.max(16, countText.implicitWidth + 8)
         radius: 8
-        color: Theme.accent
+        color: Qt.rgba(1, 1, 1, 0.14)
+        border.width: 1
+        border.color: Qt.rgba(1, 1, 1, 0.08)
         Layout.alignment: Qt.AlignVCenter
 
         ThemedText {
@@ -45,7 +47,7 @@ RowLayout {
             text: notifIconRoot.unreadCount > 99 ? "99+" : notifIconRoot.unreadCount.toString()
             font.pixelSize: 10
             font.bold: true
-            color: Theme.bg
+            color: Theme.fg
         }
     }
 }

@@ -1,8 +1,7 @@
-pragma ComponentBehavior: Bound
-
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import qs
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
@@ -17,6 +16,7 @@ import qs.modules.ii.bar as BarModules
 import "../SystemTray" as STray
 import qs.Modules.Bar.Widgets.MainPanel.Dashboard as MainPanelDashboard
 import qs.Modules.Bar.Widgets.MainPanel.Performance as MainPanelPerformance
+import qs.Modules.ControlCenter
 
 Rectangle {
     id: root
@@ -28,14 +28,15 @@ Rectangle {
     property string currentMode: {
         if (AppState.activePopup === "workspaceRename") return "workspaceRename";
         if (AppState.activePopup === "launcher") return "launcher";
-        if (AppState.activePopup === "dashboard") return "dashboard";
+        if (AppState.activePopup === "dashboard" || AppState.activePopup === "controlCenter") return "dashboard";
+        if (GlobalStates.osdVolumeOpen) return "volume";
         if (!root.isFullscreen && IslandState.mode !== IslandState.modeIdle && IslandState.activeNotification !== null) return "notif";
         return "clock";
     }
 
     readonly property bool isNotifActive: currentMode === "notif"
     readonly property bool isCritical: isNotifActive && IslandState.isCritical(IslandState.activeNotification)
-    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard" || currentMode === "notif" || currentMode === "workspaceRename"
+    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard" || currentMode === "notif" || currentMode === "workspaceRename" || currentMode === "volume"
 
     width: implicitWidth
     height: implicitHeight
@@ -45,10 +46,22 @@ Rectangle {
     border.color: isCritical ? Theme.accent : (isNotifActive ? Qt.rgba(1, 1, 1, 0.18) : Qt.rgba(1, 1, 1, 0.08))
     clip: true
 
+    readonly property bool isSubViewOpen: dashboardActiveTab === 3 && (controlCenterView ? controlCenterView.currentSubView !== "home" : false)
+
     implicitWidth: {
         if (currentMode === "workspaceRename") return 460;
+        if (currentMode === "volume") return 270;
         if (currentMode === "dashboard") {
             if (dashboardActiveTab === 1) return 600; // Rendimiento
+            if (dashboardActiveTab === 3) {
+                var sub = controlCenterView ? controlCenterView.currentSubView : "home";
+                if (sub === "wifi") return 560;
+                if (sub === "bluetooth") return 560;
+                if (sub === "audio") return 580;
+                if (sub === "notifications" || sub === "notifs") return 800;
+                if (sub === "widgets") return 760;
+                return 880; // 2-column Control Center (expanded width)
+            }
             return 680;
         }
         if (currentMode === "launcher") return searchQuery !== "" ? 720 : 480;
@@ -58,10 +71,21 @@ Rectangle {
 
     implicitHeight: {
         if (currentMode === "workspaceRename") return 48;
+        if (currentMode === "volume") return 48;
         if (currentMode === "dashboard") {
             if (dashboardActiveTab === 0) return 590; // Dashboard
             if (dashboardActiveTab === 1) return 410; // Rendimiento
             if (dashboardActiveTab === 2) return 500; // Codex
+            if (dashboardActiveTab === 3) {
+                var sub = controlCenterView ? controlCenterView.currentSubView : "home";
+                if (sub === "wifi") return 520;
+                if (sub === "bluetooth") return 540;
+                if (sub === "audio") return 500;
+                if (sub === "notifications" || sub === "notifs") return 680;
+                if (sub === "widgets") return 640;
+                return 600; // 2-column Control Center (expanded height)
+            }
+
             return 580;
         }
         if (currentMode === "launcher") {
@@ -227,6 +251,15 @@ Rectangle {
                 BarComponents.ControlCenterButton {
                     transparentBg: true
                     Layout.alignment: Qt.AlignVCenter
+                    onClicked: {
+                        if (AppState.activePopup === "controlCenter" && root.dashboardActiveTab === 3 && controlCenterView.currentSubView === "notifs") {
+                            AppState.activePopup = "";
+                        } else {
+                            root.dashboardActiveTab = 3;
+                            controlCenterView.openPanel("notifs");
+                            AppState.activePopup = "controlCenter";
+                        }
+                    }
                 }
 
                 BarModules.SysTray {
@@ -813,6 +846,15 @@ Rectangle {
         }
     }
 
+    Connections {
+        target: AppState
+        function onActivePopupChanged() {
+            if (AppState.activePopup === "controlCenter") {
+                root.dashboardActiveTab = 3;
+            }
+        }
+    }
+
     onCurrentModeChanged: {
         if (currentMode === "launcher") {
             searchQuery = "";
@@ -834,8 +876,109 @@ Rectangle {
 
 
 
+    Timer {
+        id: volumeCloseTimer
+        interval: 1500
+        repeat: false
+        onTriggered: {
+            GlobalStates.osdVolumeOpen = false;
+        }
+    }
+
+    Connections {
+        target: GlobalStates
+        function onOsdVolumeOpenChanged() {
+            if (GlobalStates.osdVolumeOpen) {
+                volumeCloseTimer.restart();
+            }
+        }
+    }
+
+    Connections {
+        target: Audio.sink?.audio ?? null
+        function onVolumeChanged() {
+            if (root.currentMode !== "dashboard" && root.currentMode !== "launcher" && root.currentMode !== "workspaceRename") {
+                GlobalStates.osdVolumeOpen = true;
+                volumeCloseTimer.restart();
+            }
+        }
+        function onMutedChanged() {
+            if (root.currentMode !== "dashboard" && root.currentMode !== "launcher" && root.currentMode !== "workspaceRename") {
+                GlobalStates.osdVolumeOpen = true;
+                volumeCloseTimer.restart();
+            }
+        }
+    }
+
     // ==========================================
-    // 5. DASHBOARD VIEW (When hovering/clicking the Clock)
+    // 5. VOLUME HUD VIEW (When changing volume via wheel or keys)
+    // ==========================================
+    Item {
+        id: volumeContainer
+        anchors.fill: parent
+        anchors.leftMargin: 16
+        anchors.rightMargin: 16
+        opacity: root.currentMode === "volume" ? 1 : 0
+        visible: opacity > 0
+
+        Behavior on opacity {
+            NumberAnimation { duration: 150 }
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            spacing: 12
+
+            Rectangle {
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                radius: 14
+                color: (Audio.sink?.audio?.muted) ? Qt.rgba(1, 0.2, 0.2, 0.15) : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.15)
+                Layout.alignment: Qt.AlignVCenter
+
+                SvgIcon {
+                    anchors.centerIn: parent
+                    icon: (Audio.sink?.audio?.muted || (Audio.sink?.audio?.volume ?? 0) === 0) ? "volume-off" : "volume"
+                    iconSize: 14
+                    flat: true
+                    iconColor: (Audio.sink?.audio?.muted) ? "#ff6b6b" : Theme.accent
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 6
+                radius: 3
+                color: Qt.rgba(1, 1, 1, 0.12)
+                clip: true
+                Layout.alignment: Qt.AlignVCenter
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: parent.width * Math.min(1.0, Math.max(0, Audio.sink?.audio?.volume ?? 0))
+                    radius: 3
+                    color: (Audio.sink?.audio?.muted) ? Theme.muted : Theme.accent
+
+                    Behavior on width {
+                        NumberAnimation { duration: 80 }
+                    }
+                }
+            }
+
+            ThemedText {
+                text: (Audio.sink?.audio?.muted) ? Translation.tr("Muted") : Math.round(((Audio.sink?.audio?.volume ?? 0) * 100)) + "%"
+                font.pixelSize: 12
+                font.bold: true
+                color: Theme.fg
+                Layout.alignment: Qt.AlignVCenter
+            }
+        }
+    }
+
+    // ==========================================
+    // 6. DASHBOARD VIEW (When hovering/clicking the Clock)
     // ==========================================
     property int dashboardActiveTab: 0
 
@@ -850,12 +993,18 @@ Rectangle {
         opacity: root.currentMode === "dashboard" ? 1 : 0
         visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 180 } }
+        transform: Translate {
+            y: root.currentMode === "dashboard" ? 0 : -16
+            Behavior on y { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+        }
+
+        Behavior on opacity { NumberAnimation { duration: (root.dashboardActiveTab === 3 ? 0 : 200); easing.type: Easing.OutCubic } }
 
         ThemedTabs {
             id: headerRowItem
             Layout.fillWidth: true
-            Layout.preferredHeight: 44
+            Layout.preferredHeight: root.isSubViewOpen ? 0 : 44
+            visible: !root.isSubViewOpen
             activeValue: root.dashboardActiveTab
             onTabSelected: (value) => root.dashboardActiveTab = value
 
@@ -875,6 +1024,12 @@ Rectangle {
                 glyph: "code"
                 text: "Codex"
                 value: 2
+            }
+
+            ThemedTab {
+                glyph: "tune"
+                text: Translation.tr("Quick Settings")
+                value: 3
             }
         }
 
@@ -896,6 +1051,12 @@ Rectangle {
                 anchors.fill: parent
                 visible: root.dashboardActiveTab === 2
                 active: root.currentMode === "dashboard" && visible
+            }
+
+            ControlCenterView {
+                id: controlCenterView
+                anchors.fill: parent
+                visible: root.dashboardActiveTab === 3
             }
         }
     }

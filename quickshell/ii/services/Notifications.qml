@@ -200,9 +200,11 @@ Singleton {
         const index = root.list.findIndex((notif) => notif.notificationId === id);
         const notifServerIndex = notifServer.trackedNotifications.values.findIndex((notif) => notif.id + root.idOffset === id);
         if (index !== -1) {
-            root.list.splice(index, 1);
+            const updated = [...root.list];
+            updated.splice(index, 1);
+            root.list = updated;
+            root.unread = Math.max(0, root.unread - 1);
             notifFileView.setText(stringifyList(root.list));
-            triggerListChange()
         }
         if (notifServerIndex !== -1) {
             notifServer.trackedNotifications.values[notifServerIndex].dismiss()
@@ -212,7 +214,7 @@ Singleton {
 
     function discardAllNotifications() {
         root.list = []
-        triggerListChange()
+        root.unread = 0
         notifFileView.setText(stringifyList(root.list));
         notifServer.trackedNotifications.values.forEach((notif) => {
             notif.dismiss()

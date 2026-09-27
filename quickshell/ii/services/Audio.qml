@@ -15,7 +15,7 @@ Singleton {
     property bool ready: Pipewire.defaultAudioSink?.ready ?? false
     property PwNode sink: Pipewire.defaultAudioSink
     property PwNode source: Pipewire.defaultAudioSource
-    readonly property real hardMaxValue: 2.00 // People keep joking about setting volume to 5172% so...
+    readonly property real hardMaxValue: 1.50 // Capped to 150% (1.5)
     property string audioTheme: Config.options.sounds.theme
     property real value: sink?.audio.volume ?? 0
     
@@ -50,23 +50,59 @@ Singleton {
 
     // Controls
     function toggleMute() {
-        Audio.sink.audio.muted = !Audio.sink.audio.muted
+        if (Audio.sink && Audio.sink.audio) {
+            Audio.sink.audio.muted = !Audio.sink.audio.muted;
+        }
     }
 
     function toggleMicMute() {
-        Audio.source.audio.muted = !Audio.source.audio.muted
+        if (Audio.source && Audio.source.audio) {
+            Audio.source.audio.muted = !Audio.source.audio.muted;
+        }
+    }
+
+    function setVolume(volume) {
+        if (Audio.sink && Audio.sink.audio) {
+            const clamped = Math.max(0.0, Math.min(root.hardMaxValue, volume));
+            Audio.sink.audio.volume = clamped;
+            if (Audio.sink.audio.muted && clamped > 0) {
+                Audio.sink.audio.muted = false;
+            }
+        }
+    }
+
+    function setMicVolume(volume) {
+        if (Audio.source && Audio.source.audio) {
+            const clamped = Math.max(0.0, Math.min(root.hardMaxValue, volume));
+            Audio.source.audio.volume = clamped;
+            if (Audio.source.audio.muted && clamped > 0) {
+                Audio.source.audio.muted = false;
+            }
+        }
     }
 
     function incrementVolume() {
         const currentVolume = Audio.value;
         const step = currentVolume < 0.1 ? 0.01 : 0.02 || 0.2;
-        Audio.sink.audio.volume = Math.min(1, Audio.sink.audio.volume + step);
+        if (Audio.sink && Audio.sink.audio) {
+            Audio.sink.audio.volume = Math.min(root.hardMaxValue, Audio.sink.audio.volume + step);
+        }
     }
     
     function decrementVolume() {
         const currentVolume = Audio.value;
         const step = currentVolume < 0.1 ? 0.01 : 0.02 || 0.2;
-        Audio.sink.audio.volume -= step;
+        if (Audio.sink && Audio.sink.audio) {
+            Audio.sink.audio.volume = Math.max(0.0, Audio.sink.audio.volume - step);
+        }
+    }
+
+    function volumeUp() {
+        incrementVolume();
+    }
+
+    function volumeDown() {
+        decrementVolume();
     }
 
     function setDefaultSink(node) {
@@ -75,6 +111,12 @@ Singleton {
 
     function setDefaultSource(node) {
         Pipewire.preferredDefaultAudioSource = node;
+    }
+
+    onSinkChanged: {
+        if (sink && sink.audio && sink.audio.volume > root.hardMaxValue) {
+            sink.audio.volume = root.hardMaxValue;
+        }
     }
 
     // Internals
@@ -87,6 +129,10 @@ Singleton {
         property bool lastReady: false
         property real lastVolume: 0
         function onVolumeChanged() {
+            if (!sink || !sink.audio) return;
+            if (sink.audio.volume > root.hardMaxValue) {
+                sink.audio.volume = root.hardMaxValue;
+            }
             if (!Config.options.audio.protection.enable) return;
             const newVolume = sink.audio.volume;
             // when resuming from suspend, we should not write volume to avoid pipewire volume reset issues
@@ -101,7 +147,7 @@ Singleton {
                 return;
             }
             const maxAllowedIncrease = Config.options.audio.protection.maxAllowedIncrease / 100; 
-            const maxAllowed = Config.options.audio.protection.maxAllowed / 100;
+            const maxAllowed = Math.min(root.hardMaxValue, Config.options.audio.protection.maxAllowed / 100);
 
             if (newVolume - lastVolume > maxAllowedIncrease) {
                 sink.audio.volume = lastVolume;

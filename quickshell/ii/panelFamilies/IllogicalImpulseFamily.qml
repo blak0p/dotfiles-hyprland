@@ -38,7 +38,7 @@ Scope {
     PanelLoader { component: ScreenCorners {} }
     PanelLoader { component: ScreenTranslator {} }
     PanelLoader { component: SessionScreen {} }
-    PanelLoader { component: SidebarRight {} }
+    // PanelLoader { component: SidebarRight {} }
     PanelLoader { extraCondition: Config.options.bar.vertical; component: VerticalBar {} }
     PanelLoader { component: WallpaperSelector {} }
 }

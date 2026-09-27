@@ -21,7 +21,8 @@ Singleton {
 
     property bool pomodoroRunning: Persistent.states.timer.pomodoro.running
     property bool pomodoroBreak: Persistent.states.timer.pomodoro.isBreak
-    property bool pomodoroLongBreak: Persistent.states.timer.pomodoro.isBreak && (pomodoroCycle + 1 == cyclesBeforeLongBreak);
+    property bool isManualLongBreak: false
+    property bool pomodoroLongBreak: Persistent.states.timer.pomodoro.isBreak && ((pomodoroCycle + 1 == cyclesBeforeLongBreak) || isManualLongBreak);
     property int pomodoroLapDuration: pomodoroLongBreak ? longBreakTime : pomodoroBreak ? breakTime : focusTime // This is a binding that's to be kept
     property int pomodoroSecondsLeft: pomodoroLapDuration // Reasonable init value, to be changed
     property int pomodoroCycle: Persistent.states.timer.pomodoro.cycle
@@ -50,6 +51,7 @@ Singleton {
         // Work <-> break ?
         if (getCurrentTimeInSeconds() >= Persistent.states.timer.pomodoro.start + pomodoroLapDuration) {
             // Reset counts
+            isManualLongBreak = false;
             Persistent.states.timer.pomodoro.isBreak = !Persistent.states.timer.pomodoro.isBreak;
             Persistent.states.timer.pomodoro.start = getCurrentTimeInSeconds();
 
@@ -76,6 +78,30 @@ Singleton {
         pomodoroSecondsLeft = pomodoroLapDuration - (getCurrentTimeInSeconds() - Persistent.states.timer.pomodoro.start);
     }
 
+    function setModeFocus() {
+        isManualLongBreak = false;
+        Persistent.states.timer.pomodoro.running = false;
+        Persistent.states.timer.pomodoro.isBreak = false;
+        Persistent.states.timer.pomodoro.start = getCurrentTimeInSeconds();
+        pomodoroSecondsLeft = focusTime;
+    }
+
+    function setModeBreak() {
+        isManualLongBreak = false;
+        Persistent.states.timer.pomodoro.running = false;
+        Persistent.states.timer.pomodoro.isBreak = true;
+        Persistent.states.timer.pomodoro.start = getCurrentTimeInSeconds();
+        pomodoroSecondsLeft = breakTime;
+    }
+
+    function setModeLongBreak() {
+        isManualLongBreak = true;
+        Persistent.states.timer.pomodoro.running = false;
+        Persistent.states.timer.pomodoro.isBreak = true;
+        Persistent.states.timer.pomodoro.start = getCurrentTimeInSeconds();
+        pomodoroSecondsLeft = longBreakTime;
+    }
+
     Timer {
         id: pomodoroTimer
         interval: 200
@@ -93,11 +119,12 @@ Singleton {
     }
 
     function resetPomodoro() {
+        isManualLongBreak = false;
         Persistent.states.timer.pomodoro.running = false;
         Persistent.states.timer.pomodoro.isBreak = false;
         Persistent.states.timer.pomodoro.start = getCurrentTimeInSeconds();
         Persistent.states.timer.pomodoro.cycle = 0;
-        refreshPomodoro();
+        pomodoroSecondsLeft = focusTime;
     }
 
     // Stopwatch

@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Services.UPower
 import qs
 import qs.services
+import qs.Core.Services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
@@ -230,7 +231,7 @@ Item { // Bar content region
                 colBackgroundToggled: Appearance.colors.colSecondaryContainer
                 colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                 colRippleToggled: Appearance.colors.colSecondaryContainerActive
-                toggled: GlobalStates.sidebarRightOpen
+                toggled: AppState.activePopup === "controlCenter"
                 property color colText: toggled ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colOnLayer0
 
                 Behavior on colText {
@@ -238,7 +239,7 @@ Item { // Bar content region
                 }
 
                 onPressed: {
-                    GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
+                    AppState.togglePopup("controlCenter");
                 }
 
                 RowLayout {

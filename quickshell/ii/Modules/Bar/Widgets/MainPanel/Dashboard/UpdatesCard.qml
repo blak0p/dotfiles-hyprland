@@ -10,13 +10,15 @@ Card {
     id: root
 
     readonly property string cachyUpdates: UpdateService.cachyUpdatesCount
-    property bool hasUpdates: parseInt(cachyUpdates) > 0
-    readonly property bool isChecking: UpdateService.isCheckingUpdates
+    readonly property string homebrewUpdates: UpdateService.homebrewUpdatesCount
+    readonly property bool countsReady: /^\d+$/.test(cachyUpdates) && /^\d+$/.test(homebrewUpdates)
+    readonly property int totalUpdates: countsReady ? Number(cachyUpdates) + Number(homebrewUpdates) : 0
+    property bool hasUpdates: countsReady && totalUpdates > 0
+    readonly property bool isChecking: UpdateService.isCheckingUpdates || !countsReady
     readonly property bool isUpdating: UpdateService.isSystemUpdating
 
     function runUpdate() {
-        SettingsService.packageManagerMode = "update";
-        AppState.openPopup("packagemanager");
+        UpdateService.runSystemUpdate();
     }
 
     ColumnLayout {
@@ -50,8 +52,7 @@ Card {
 
                     anchors.centerIn: parent
                     text: {
-                        let total = parseInt(root.cachyUpdates) || 0;
-                        return total + " NEW";
+                        return root.totalUpdates + " NEW";
                     }
                     font.pixelSize: Constants.sizeXs
                     font.bold: true
@@ -120,10 +121,10 @@ Card {
                             if (root.isChecking)
                                 return Translation.tr("Checking updates...");
 
-                            if (root.cachyUpdates === "...")
+                            if (root.cachyUpdates === "..." || root.homebrewUpdates === "...")
                                 return Translation.tr("Checking updates...");
 
-                            let total = parseInt(root.cachyUpdates) || 0;
+                            let total = root.totalUpdates;
                             return total > 0 ? total + " " + Translation.tr("packages pending") : Translation.tr("System up to date");
                         }
                         font.pixelSize: Constants.sizeSm
@@ -133,12 +134,11 @@ Card {
 
                     ThemedText {
                         text: {
-                            if (root.isUpdating || root.isChecking || root.cachyUpdates === "...")
+                            if (root.isUpdating || root.isChecking || root.cachyUpdates === "..." || root.homebrewUpdates === "...")
                                 return Translation.tr("Please wait");
 
-                            let total = parseInt(root.cachyUpdates) || 0;
-                            if (total > 0) {
-                                return "CachyOS: " + root.cachyUpdates;
+                            if (root.totalUpdates > 0) {
+                                return "CachyOS: " + (parseInt(root.cachyUpdates) || 0) + " · Homebrew: " + (parseInt(root.homebrewUpdates) || 0);
                             }
 
                             return Translation.tr("All packages are currently up to date");
@@ -159,8 +159,9 @@ Card {
                 id: updateButton
 
                 text: root.hasUpdates && !root.isUpdating ? Translation.tr("Update") : Translation.tr("Check")
+                enabled: !root.isChecking && !root.isUpdating
                 onClicked: {
-                    if (root.hasUpdates && !root.isUpdating)
+                    if (root.hasUpdates)
                         root.runUpdate();
                     else
                         UpdateService.checkUpdates();

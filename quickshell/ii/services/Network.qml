@@ -16,6 +16,10 @@ Singleton {
 
     property bool wifi: true
     property bool ethernet: false
+    property bool ethernetConnected: false
+    property string ethernetName: ""
+    property string ethernetStatus: "disconnected"
+    property string ethernetDevice: ""
 
     property bool wifiEnabled: false
     property bool wifiScanning: false
@@ -34,7 +38,7 @@ Singleton {
 
     property string networkName: ""
     property int networkStrength
-    property string materialSymbol: root.ethernet
+    property string materialSymbol: (root.ethernet || root.ethernetConnected)
         ? "lan"
         : (root.wifiEnabled && root.wifiStatus === "connected")
             ? (
@@ -56,7 +60,22 @@ Singleton {
     // Control
     function enableWifi(enabled = true): void {
         const cmd = enabled ? "on" : "off";
-        enableWifiProc.exec(["nmcli", "radio", "wifi", cmd]);
+        root.wifiEnabled = enabled;
+        Quickshell.execDetached(["nmcli", "radio", "wifi", cmd]);
+        enableWifiTimer.restart();
+    }
+
+    Timer {
+        id: enableWifiTimer
+        interval: 300
+        repeat: false
+        onTriggered: {
+            wifiStatusProcess.running = true;
+            updateConnectionType.startCheck();
+            if (root.wifiEnabled) {
+                getNetworks.running = true;
+            }
+        }
     }
 
     function toggleWifi(): void {
@@ -69,15 +88,25 @@ Singleton {
     }
 
     function connectToWifiNetwork(accessPoint: WifiAccessPoint): void {
+        if (!accessPoint) return;
         accessPoint.askingPassword = false;
         root.wifiConnectTarget = accessPoint;
-        // We use this instead of `nmcli connection up SSID` because this also creates a connection profile
-        connectProc.exec(["nmcli", "dev", "wifi", "connect", accessPoint.ssid])
+        Quickshell.execDetached(["nmcli", "dev", "wifi", "connect", accessPoint.ssid]);
+    }
 
+    function connectWithPassword(accessPoint: WifiAccessPoint, password: string): void {
+        if (!accessPoint) return;
+        accessPoint.askingPassword = false;
+        root.wifiConnectTarget = accessPoint;
+        Quickshell.execDetached(["nmcli", "dev", "wifi", "connect", accessPoint.ssid, "password", password]);
+        Qt.callLater(() => {
+            updateConnectionType.startCheck();
+            getNetworks.running = true;
+        });
     }
 
     function disconnectWifiNetwork(): void {
-        if (active) disconnectProc.exec(["nmcli", "connection", "down", active.ssid]);
+        if (active) Quickshell.execDetached(["nmcli", "connection", "down", active.ssid]);
     }
 
     function openPublicWifiPortal() {
@@ -85,19 +114,19 @@ Singleton {
     }
 
     function changePassword(network: WifiAccessPoint, password: string, username = ""): void {
-        // TODO: enterprise wifi with username
         network.askingPassword = false;
-        changePasswordProc.exec({
-            "environment": {
-                "PASSWORD": password,
-                "SSID": network.ssid
-            },
-            "command": ["bash", "-c", 'nmcli connection modify "$SSID" wifi-sec.psk "$PASSWORD"']
-        })
+        Quickshell.execDetached(["nmcli", "connection", "modify", network.ssid, "wifi-sec.psk", password]);
     }
 
     Process {
         id: enableWifiProc
+        onExited: (exitCode, exitStatus) => {
+            wifiStatusProcess.running = true;
+            updateConnectionType.startCheck();
+            if (root.wifiEnabled) {
+                getNetworks.running = true;
+            }
+        }
     }
 
     Process {
@@ -109,20 +138,25 @@ Singleton {
         stdout: SplitParser {
             onRead: line => {
                 // print(line)
-                getNetworks.running = true
+                getNetworks.running = true;
             }
         }
         stderr: SplitParser {
             onRead: line => {
                 // print("err:", line)
-                if (line.includes("Secrets were required")) {
-                    root.wifiConnectTarget.askingPassword = true
+                if (line.includes("Secrets were required") || line.includes("password")) {
+                    if (root.wifiConnectTarget) {
+                        root.wifiConnectTarget.askingPassword = true;
+                    }
                 }
             }
         }
         onExited: (exitCode, exitStatus) => {
-            root.wifiConnectTarget.askingPassword = (exitCode !== 0)
-            root.wifiConnectTarget = null
+            if (root.wifiConnectTarget) {
+                root.wifiConnectTarget.askingPassword = (exitCode !== 0);
+            }
+            root.wifiConnectTarget = null;
+            root.update();
         }
     }
 
@@ -155,7 +189,7 @@ Singleton {
     // Status update
     function update() {
         updateConnectionType.startCheck();
-        wifiStatusProcess.running = true
+        wifiStatusProcess.running = true;
         updateNetworkName.running = true;
         updateNetworkStrength.running = true;
     }
@@ -172,7 +206,7 @@ Singleton {
     Process {
         id: updateConnectionType
         property string buffer
-        command: ["sh", "-c", "nmcli -t -f TYPE,STATE d status && nmcli -t -f CONNECTIVITY g"]
+        command: ["sh", "-c", "LANG=C LC_ALL=C nmcli -t -f TYPE,STATE,CONNECTION,DEVICE d status && LANG=C LC_ALL=C nmcli -t -f CONNECTIVITY g"]
         running: true
         function startCheck() {
             buffer = "";
@@ -185,43 +219,64 @@ Singleton {
         }
         onExited: (exitCode, exitStatus) => {
             const lines = updateConnectionType.buffer.trim().split('\n');
-            const connectivity = lines.pop() // none, limited, full
+            const connectivity = lines.pop(); // none, limited, full
             let hasEthernet = false;
+            let ethernetName = "";
+            let ethernetDevice = "";
+            let ethernetStatus = "disconnected";
             let hasWifi = false;
             let wifiStatus = "disconnected";
-            lines.forEach(line => {
-                if (line.includes("ethernet") && line.includes("connected"))
-                    hasEthernet = true;
-                else if (line.includes("wifi:")) {
-                    if (line.includes("disconnected")) {
-                        wifiStatus = "disconnected"
+
+            lines.forEach(rawLine => {
+                const line = rawLine.replace(/\\:/g, "__COLON__");
+                const parts = line.split(":").map(p => p.replace(/__COLON__/g, ":"));
+                const type = parts[0] || "";
+                const state = parts[1] || "";
+                const connection = parts[2] || "";
+                const device = parts[3] || "";
+
+                if (type === "ethernet") {
+                    ethernetDevice = device;
+                    ethernetStatus = state;
+                    if (state.includes("connected") || state.includes("conectado")) {
+                        hasEthernet = true;
+                        ethernetName = connection || device || "Ethernet";
+                    } else if (!ethernetName && connection) {
+                        ethernetName = connection;
                     }
-                    else if (line.includes("connected")) {
+                } else if (type.startsWith("wifi")) {
+                    if (type === "wifi-p2p") return;
+                    if (state.includes("disconnected") || state.includes("desconectado")) {
+                        wifiStatus = "disconnected";
+                    } else if (state.includes("connected") || state.includes("conectado")) {
                         hasWifi = true;
-                        wifiStatus = "connected"
+                        wifiStatus = "connected";
 
                         if (connectivity === "limited") {
                             hasWifi = false;
-                            wifiStatus = "limited"
+                            wifiStatus = "limited";
                         }
-                    }
-                    else if (line.includes("connecting")) {
-                        wifiStatus = "connecting"
-                    }
-                    else if (line.includes("unavailable")) {
-                        wifiStatus = "disabled"
+                    } else if (state.includes("connecting") || state.includes("conectando")) {
+                        wifiStatus = "connecting";
+                    } else if (state.includes("unavailable") || state.includes("unmanaged") || state.includes("no disponible")) {
+                        wifiStatus = "disabled";
                     }
                 }
             });
+
             root.wifiStatus = wifiStatus;
             root.ethernet = hasEthernet;
+            root.ethernetConnected = hasEthernet;
+            root.ethernetName = ethernetName;
+            root.ethernetStatus = ethernetStatus;
+            root.ethernetDevice = ethernetDevice;
             root.wifi = hasWifi;
         }
     }
 
     Process {
         id: updateNetworkName
-        command: ["sh", "-c", "nmcli -t -f NAME c show --active | head -1"]
+        command: ["sh", "-c", "LANG=C LC_ALL=C nmcli -t -f NAME c show --active | head -1"]
         running: true
         stdout: SplitParser {
             onRead: data => {
@@ -233,7 +288,7 @@ Singleton {
     Process {
         id: updateNetworkStrength
         running: true
-        command: ["sh", "-c", "nmcli -f IN-USE,SIGNAL,SSID device wifi | awk '/^\\*/{if (NR!=1) {print $2}}'"]
+        command: ["sh", "-c", "LANG=C LC_ALL=C nmcli -f IN-USE,SIGNAL,SSID device wifi | awk '/^\\*/{if (NR!=1) {print $2}}'"]
         stdout: SplitParser {
             onRead: data => {
                 root.networkStrength = parseInt(data);
@@ -243,7 +298,7 @@ Singleton {
 
     Process {
         id: wifiStatusProcess
-        command: ["nmcli", "radio", "wifi"]
+        command: ["sh", "-c", "LANG=C LC_ALL=C nmcli radio wifi"]
         Component.onCompleted: running = true
         environment: ({
             LANG: "C",
@@ -259,7 +314,7 @@ Singleton {
     Process {
         id: getNetworks
         running: true
-        command: ["nmcli", "-g", "ACTIVE,SIGNAL,FREQ,SSID,BSSID,SECURITY", "d", "w"]
+        command: ["sh", "-c", "LANG=C LC_ALL=C nmcli -g ACTIVE,SIGNAL,FREQ,SSID,BSSID,SECURITY d w"]
         environment: ({
             LANG: "C",
             LC_ALL: "C"

@@ -61,17 +61,16 @@ Item {
         Behavior on x {
             NumberAnimation {
                 duration: Constants.animNormal
-                easing.type: Easing.OutQuint
+                easing.type: Easing.OutBack
+                easing.overshoot: 1.08
             }
-
         }
 
         Behavior on width {
             NumberAnimation {
                 duration: Constants.animNormal
-                easing.type: Easing.OutQuint
+                easing.type: Easing.OutCubic
             }
-
         }
 
         Behavior on color {

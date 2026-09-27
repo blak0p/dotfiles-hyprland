@@ -15,18 +15,18 @@ ColumnLayout {
     // ---- Volume ----
     ThemedSlider {
         Layout.fillWidth: true
-        icon: Audio.sink?.audio?.muted || (Audio.sink?.audio?.volume ?? 0) === 0 ? "volume-off" : "volume"
-        label: "Volumen"
+        icon: (Audio.sink && Audio.sink.audio && Audio.sink.audio.muted) || ((Audio.sink && Audio.sink.audio ? Audio.sink.audio.volume : 0) === 0) ? "volume-off" : "volume"
+        label: Translation.tr("Volume")
         from: 0
         to: Audio.hardMaxValue
         stepSize: 0.02
-        value: Audio.sink?.audio?.volume ?? 0
+        value: (Audio.sink && Audio.sink.audio) ? Audio.sink.audio.volume : 0
         suffix: "%"
         decimals: 0
         onIconClicked: Audio.toggleMute()
         onMoved: (val) => {
             if (Audio.sink && Audio.sink.audio) {
-                Audio.sink.audio.volume = val;
+                Audio.sink.audio.volume = Math.min(Audio.hardMaxValue, Math.max(0.0, val));
                 if (Audio.sink.audio.muted && val > 0)
                     Audio.sink.audio.muted = false;
             }
@@ -37,7 +37,7 @@ ColumnLayout {
     ThemedSlider {
         Layout.fillWidth: true
         icon: Audio.source?.audio?.muted ? "microphone-off" : "microphone"
-        label: "Micrófono"
+        label: Translation.tr("Microphone")
         from: 0
         to: Audio.hardMaxValue
         stepSize: 0.02
@@ -47,7 +47,7 @@ ColumnLayout {
         onIconClicked: Audio.toggleMicMute()
         onMoved: (val) => {
             if (Audio.source && Audio.source.audio) {
-                Audio.source.audio.volume = val;
+                Audio.source.audio.volume = Math.min(Audio.hardMaxValue, Math.max(0.0, val));
                 if (Audio.source.audio.muted && val > 0)
                     Audio.source.audio.muted = false;
             }
@@ -58,7 +58,7 @@ ColumnLayout {
     ThemedSlider {
         Layout.fillWidth: true
         icon: "sun"
-        label: "Brillo"
+        label: Translation.tr("Brightness")
         from: 0
         to: 1
         stepSize: 0.01

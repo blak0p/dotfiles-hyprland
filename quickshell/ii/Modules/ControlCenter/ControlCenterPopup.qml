@@ -10,91 +10,113 @@ import qs.Core.Windows
 import qs.Core.Services
 import qs.services
 
+import "Sections" as Sections
+
 TopPopup {
     id: root
 
     popupId: "controlCenter"
     floating: true
-    contentWidth: 400
-    contentHeight: contentCol.implicitHeight
+    contentWidth: 360
+    contentHeight: (root.activeView === "home" ? homeView.implicitHeight : networkSection.implicitHeight) + 32
     autoCloseOnUnhover: false
 
     readonly property int contentHeightHint: 300
 
-    // Nav: 0 Inicio, 1 Red, 2 Bluetooth, 3 Audio, 4 Widgets
-    property int activeView: 0
+    // "home" | "network"
+    property string activeView: "home"
 
-    ColumnLayout {
-        id: contentCol
-        width: root.contentWidth
-        spacing: 10
+    onIsOpenChanged: {
+        if (!isOpen)
+            activeView = "home";
+    }
 
-        // ===== Navigation header =====
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
+    Item {
+        id: contentWrapper
+        implicitWidth: root.contentWidth
+        implicitHeight: root.contentHeight
 
-            ThemedText {
-                text: "Centro de control"
-                font.pixelSize: Constants.sizeXl
-                font.bold: true
-                color: Theme.fg
-            }
+        ColumnLayout {
+            id: contentCol
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 12
 
-            Item { Layout.fillWidth: true }
+            // ==========================================
+            // 1. HOME VIEW: ONLY WI-FI
+            // ==========================================
+            ColumnLayout {
+                id: homeView
+                visible: root.activeView === "home"
+                Layout.fillWidth: true
+                spacing: 12
 
-            SvgIcon {
-                icon: "x"
-                iconSize: Constants.sizeLg
-                flat: true
-                iconColor: closeHover.hovered ? Theme.fg : Theme.muted
-                HoverHandler { id: closeHover; cursorShape: Qt.PointingHandCursor }
-                TapHandler { onTapped: root.isOpen = false }
-            }
-        }
+                // Header
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
 
-        ThemedTabs {
-            activeValue: root.activeView
-            Layout.fillWidth: true
-            Layout.preferredHeight: 30
+                    ThemedText {
+                        text: Translation.tr("Control Center")
+                        font.pixelSize: Constants.sizeLg
+                        font.bold: true
+                        color: Theme.fg
+                    }
 
-            ThemedTab { value: 0; text: "Inicio" }
-            ThemedTab { value: 1; text: "Red" }
-            ThemedTab { value: 2; text: "BT" }
-            ThemedTab { value: 3; text: "Audio" }
-            ThemedTab { value: 4; text: "Más" }
+                    Item { Layout.fillWidth: true }
 
-            onTabSelected: (v) => { root.activeView = v }
-        }
+                    Rectangle {
+                        Layout.preferredWidth: 24
+                        Layout.preferredHeight: 24
+                        radius: 12
+                        color: closeMouse.containsMouse ? Theme.bgTertiary : "transparent"
 
-        // ===== View content =====
-        Flickable {
-            Layout.fillWidth: true
-            implicitHeight: viewLoader.implicitHeight
-            contentHeight: viewLoader.implicitHeight
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AsNeeded
-                visible: viewLoader.implicitHeight > height
-            }
+                        SvgIcon {
+                            anchors.centerIn: parent
+                            icon: "x"
+                            iconSize: Constants.sizeSm
+                            flat: true
+                            iconColor: closeMouse.containsMouse ? Theme.fg : Theme.muted
+                        }
 
-            Loader {
-                id: viewLoader
-                width: parent.width
-                source: root.activeView === 0 ? Qt.resolvedUrl("HomeView.qml")
-                    : root.activeView === 1 ? Qt.resolvedUrl("Sections/NetworkSection.qml")
-                    : root.activeView === 2 ? Qt.resolvedUrl("Sections/BluetoothSection.qml")
-                    : root.activeView === 3 ? Qt.resolvedUrl("Sections/AudioSection.qml")
-                    : Qt.resolvedUrl("Sections/WidgetsSection.qml")
-
-                onLoaded: {
-                    if (item && item.hasOwnProperty("width"))
-                        item.width = parent.width;
-                    if (item && item.hasOwnProperty("contentHeightHint"))
-                        item.contentHeightHint = root.contentHeightHint;
+                        MouseArea {
+                            id: closeMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: AppState.activePopup = ""
+                        }
+                    }
                 }
+
+            // ONLY Wi-Fi toggle
+            QuickToggleButton {
+                icon: Network.wifiEnabled ? "wifi" : "wifi-off"
+                label: Translation.tr("Wi-Fi")
+                sublabel: Network.wifiEnabled ? (Network.networkName ? Network.networkName : Translation.tr("Connected")) : Translation.tr("Disconnected")
+                toggled: Network.wifiEnabled
+                hasDetail: true
+                onClicked: Network.toggleWifi()
+                onDetailClicked: root.activeView = "network"
             }
+        }
+
+        // ==========================================
+        // 2. NETWORK SUB-PANEL
+        // ==========================================
+        Sections.NetworkSection {
+            id: networkSection
+            visible: root.activeView === "network"
+            Layout.fillWidth: true
+            canGoBack: true
+            contentHeightHint: root.contentHeightHint
+            onBack: root.activeView = "home"
         }
     }
 }
+}
+
+
+
+
+

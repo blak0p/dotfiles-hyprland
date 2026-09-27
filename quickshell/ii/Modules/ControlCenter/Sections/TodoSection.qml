@@ -80,6 +80,7 @@ ColumnLayout {
             implicitHeight: 40
             radius: Constants.sizeLg
             color: modelData.done ? Theme.bgSecondary : (taskHover.hovered ? Theme.bgTertiary : Theme.bgSecondary)
+            Behavior on color { ColorAnimation { duration: Constants.animFast } }
 
             RowLayout {
                 anchors.fill: parent
@@ -89,14 +90,30 @@ ColumnLayout {
                 anchors.bottomMargin: 4
                 spacing: 8
 
-                SvgIcon {
-                    icon: modelData.done ? "circle-check" : "circle-dashed-check"
-                    iconSize: Constants.sizeLg
-                    flat: true
-                    iconColor: modelData.done ? Theme.accent : Theme.muted
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
-                    TapHandler {
-                        onTapped: modelData.done ? Todo.markUnfinished(index) : Todo.markDone(index)
+                Rectangle {
+                    Layout.preferredWidth: 24
+                    Layout.preferredHeight: 24
+                    radius: 12
+                    color: checkMouse.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.15) : "transparent"
+                    scale: checkMouse.pressed ? 0.88 : (checkMouse.containsMouse ? 1.15 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: Constants.animFast; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
+                    Behavior on color { ColorAnimation { duration: Constants.animFast } }
+
+                    SvgIcon {
+                        anchors.centerIn: parent
+                        icon: modelData.done ? "circle-check" : "circle-dashed-check"
+                        iconSize: Constants.sizeLg
+                        flat: true
+                        iconColor: modelData.done ? Theme.accent : (checkMouse.containsMouse ? Theme.accent : Theme.muted)
+                        Behavior on iconColor { ColorAnimation { duration: Constants.animFast } }
+                    }
+
+                    MouseArea {
+                        id: checkMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: modelData.done ? Todo.markUnfinished(index) : Todo.markDone(index)
                     }
                 }
 
@@ -109,13 +126,31 @@ ColumnLayout {
                     font.strikeout: modelData.done
                 }
 
-                SvgIcon {
-                    icon: "x"
-                    iconSize: Constants.sizeSm
-                    flat: true
-                    iconColor: Theme.muted
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
-                    TapHandler { onTapped: Todo.deleteItem(index) }
+                Rectangle {
+                    Layout.preferredWidth: 20
+                    Layout.preferredHeight: 20
+                    radius: 10
+                    color: deleteMouse.containsMouse ? Qt.rgba(1, 0.2, 0.2, 0.15) : "transparent"
+                    scale: deleteMouse.pressed ? 0.88 : (deleteMouse.containsMouse ? 1.15 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: Constants.animFast; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
+                    Behavior on color { ColorAnimation { duration: Constants.animFast } }
+
+                    SvgIcon {
+                        anchors.centerIn: parent
+                        icon: "x"
+                        iconSize: Constants.sizeSm
+                        flat: true
+                        iconColor: deleteMouse.containsMouse ? "#ff6b6b" : Theme.muted
+                        Behavior on iconColor { ColorAnimation { duration: Constants.animFast } }
+                    }
+
+                    MouseArea {
+                        id: deleteMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Todo.deleteItem(index)
+                    }
                 }
             }
 

@@ -28,15 +28,15 @@ Scope {
     ]
 
     function triggerBrightnessOsd() {
-        if (Config.options.osd.inIsland) return;
         root.currentIndicator = "brightness";
         GlobalStates.osdBrightnessOpen = true;
+        if (Config.options.osd.inIsland) return;
     }
 
     function triggerVolumeOSD() {
-        if (Config.options.osd.inIsland) return;
         root.currentIndicator = "volume";
         GlobalStates.osdVolumeOpen = true;
+        if (Config.options.osd.inIsland) return;
     }
 
     // Listen to brightness changes
@@ -65,11 +65,11 @@ Scope {
         target: GlobalStates
 
         function onOsdBrightnessOpenChanged() {
-            if (GlobalStates.osdBrightnessOpen)
+            if (GlobalStates.osdBrightnessOpen && !Config.options.osd.inIsland)
                 panelLoader.active = true;
         }
         function onOsdVolumeOpenChanged() {
-            if (GlobalStates.osdVolumeOpen)
+            if (GlobalStates.osdVolumeOpen && !Config.options.osd.inIsland)
                 panelLoader.active = true;
         }
     }

@@ -80,12 +80,15 @@ ColumnLayout {
                 width: ListView.view.width
                 implicitHeight: netCol.implicitHeight + 14
                 radius: Constants.sizeLg
-                readonly property bool isActive: modelData?.active ?? false
+                readonly property bool isActive: (modelData && modelData.active) ? true : false
                 color: isActive
                     ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.14)
                     : (netHover.hovered ? Theme.bgTertiary : Theme.bgSecondary)
                 border.width: isActive ? 1 : 0
                 border.color: isActive ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.4) : "transparent"
+
+                Behavior on color { ColorAnimation { duration: Constants.animFast } }
+                Behavior on border.color { ColorAnimation { duration: Constants.animFast } }
 
                 ColumnLayout {
                     id: netCol
@@ -99,8 +102,8 @@ ColumnLayout {
 
                         SvgIcon {
                             icon: netDelegate.isActive ? "wifi"
-                                : (netDelegate.modelData?.strength > 66 ? "wifi"
-                                    : (netDelegate.modelData?.strength > 33 ? "wifi" : "wifi"))
+                                : ((netDelegate.modelData && netDelegate.modelData.strength > 66) ? "wifi"
+                                    : ((netDelegate.modelData && netDelegate.modelData.strength > 33) ? "wifi" : "wifi"))
                             iconSize: Constants.sizeLg
                             flat: true
                             iconColor: netDelegate.isActive ? Theme.accent : Theme.muted
@@ -108,7 +111,7 @@ ColumnLayout {
 
                         ThemedText {
                             Layout.fillWidth: true
-                            text: netDelegate.modelData?.ssid || "Red oculta"
+                            text: (netDelegate.modelData && netDelegate.modelData.ssid) ? netDelegate.modelData.ssid : "Red oculta"
                             font.pixelSize: Constants.sizeSm
                             font.bold: netDelegate.isActive
                             color: netDelegate.isActive ? Theme.accent : Theme.fg
@@ -116,13 +119,13 @@ ColumnLayout {
                         }
 
                         ThemedText {
-                            text: netDelegate.modelData?.strength ? (netDelegate.modelData.strength + "%") : ""
+                            text: (netDelegate.modelData && netDelegate.modelData.strength) ? (netDelegate.modelData.strength + "%") : ""
                             font.pixelSize: Constants.size2Xs
                             color: Theme.muted
                         }
 
                         SvgIcon {
-                            icon: netDelegate.isActive ? "check" : (netDelegate.modelData?.security ? "lock" : "")
+                            icon: netDelegate.isActive ? "check" : ((netDelegate.modelData && netDelegate.modelData.security) ? "lock" : "")
                             iconSize: Constants.sizeSm
                             flat: true
                             iconColor: netDelegate.isActive ? Theme.accent : Theme.muted
@@ -133,7 +136,7 @@ ColumnLayout {
                     // Password input row if requested
                     RowLayout {
                         Layout.fillWidth: true
-                        visible: Boolean(netDelegate.modelData?.askingPassword)
+                        visible: Boolean(netDelegate.modelData && netDelegate.modelData.askingPassword)
                         spacing: 8
 
                         TextField {
@@ -254,12 +257,15 @@ ColumnLayout {
                 width: ListView.view.width
                 implicitHeight: btCol.implicitHeight + 14
                 radius: Constants.sizeLg
-                readonly property bool isConnected: modelData?.connected ?? false
+                readonly property bool isConnected: (modelData && modelData.connected) ? true : false
                 color: isConnected
                     ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.14)
                     : (btHover.hovered ? Theme.bgTertiary : Theme.bgSecondary)
                 border.width: isConnected ? 1 : 0
                 border.color: isConnected ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.4) : "transparent"
+
+                Behavior on color { ColorAnimation { duration: Constants.animFast } }
+                Behavior on border.color { ColorAnimation { duration: Constants.animFast } }
 
                 ColumnLayout {
                     id: btCol
@@ -284,7 +290,7 @@ ColumnLayout {
 
                             ThemedText {
                                 Layout.fillWidth: true
-                                text: btDelegate.modelData?.name || "Dispositivo desconocido"
+                                text: (btDelegate.modelData && btDelegate.modelData.name) ? btDelegate.modelData.name : "Dispositivo desconocido"
                                 font.pixelSize: Constants.sizeSm
                                 font.bold: btDelegate.isConnected
                                 color: btDelegate.isConnected ? Theme.accent : Theme.fg
@@ -294,8 +300,8 @@ ColumnLayout {
                             ThemedText {
                                 Layout.fillWidth: true
                                 text: btDelegate.isConnected
-                                    ? ("Conectado" + (btDelegate.modelData?.batteryAvailable ? " • Batería: " + Math.round(btDelegate.modelData.battery * 100) + "%" : ""))
-                                    : (btDelegate.modelData?.paired ? "Vinculado" : "Disponible")
+                                    ? ("Conectado" + ((btDelegate.modelData && btDelegate.modelData.batteryAvailable) ? " • Batería: " + Math.round(btDelegate.modelData.battery * 100) + "%" : ""))
+                                    : ((btDelegate.modelData && btDelegate.modelData.paired) ? "Vinculado" : "Disponible")
                                 font.pixelSize: Constants.size2Xs + 1
                                 color: Theme.muted
                             }
@@ -307,16 +313,16 @@ ColumnLayout {
                             ThemedButton {
                                 text: btDelegate.isConnected ? "Desconectar" : "Conectar"
                                 onClicked: {
-                                    if (btDelegate.isConnected) btDelegate.modelData.disconnect();
-                                    else btDelegate.modelData.connect();
+                                    if (btDelegate.isConnected && btDelegate.modelData) btDelegate.modelData.disconnect();
+                                    else if (btDelegate.modelData) btDelegate.modelData.connect();
                                 }
                             }
 
                             ThemedButton {
-                                text: btDelegate.modelData?.paired ? "Olvidar" : "Vincular"
+                                text: (btDelegate.modelData && btDelegate.modelData.paired) ? "Olvidar" : "Vincular"
                                 onClicked: {
-                                    if (btDelegate.modelData?.paired) btDelegate.modelData.forget();
-                                    else btDelegate.modelData?.pair();
+                                    if (btDelegate.modelData && btDelegate.modelData.paired) btDelegate.modelData.forget();
+                                    else if (btDelegate.modelData) btDelegate.modelData.pair();
                                 }
                             }
                         }

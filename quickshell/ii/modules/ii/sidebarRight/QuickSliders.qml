@@ -38,6 +38,26 @@ Rectangle {
                 right: parent.right
             }
             visible: active
+            active: Config.options.sidebar.quickSliders.showVolume
+            sourceComponent: QuickSlider {
+                materialSymbol: "volume_up"
+                from: 0
+                to: Audio.hardMaxValue
+                value: Audio.sink.audio.volume
+                stopIndicatorValues: [1]
+                tooltipContent: `${Math.round(value * 100)}%`
+                onMoved: {
+                    Audio.sink.audio.volume = Math.min(1.0, Math.max(0.0, value))
+                }
+            }
+        }
+
+        Loader {
+            anchors {
+                left: parent.left
+                right: parent.right
+            }
+            visible: active
             active: Config.options.sidebar.quickSliders.showBrightness
             sourceComponent: QuickSlider {
                 materialSymbol: "light_mode"
@@ -69,28 +89,16 @@ Rectangle {
                 right: parent.right
             }
             visible: active
-            active: Config.options.sidebar.quickSliders.showVolume
-            sourceComponent: QuickSlider {
-                materialSymbol: "volume_up"
-                value: Audio.sink.audio.volume
-                onMoved: {
-                    Audio.sink.audio.volume = value
-                }
-            }
-        }
-
-        Loader {
-            anchors {
-                left: parent.left
-                right: parent.right
-            }
-            visible: active
             active: Config.options.sidebar.quickSliders.showMic
             sourceComponent: QuickSlider {
                 materialSymbol: "mic"
+                from: 0
+                to: Audio.hardMaxValue
                 value: Audio.source.audio.volume
+                stopIndicatorValues: [1]
+                tooltipContent: `${Math.round(value * 100)}%`
                 onMoved: {
-                    Audio.source.audio.volume = value
+                    Audio.source.audio.volume = Math.min(1.0, Math.max(0.0, value))
                 }
             }
         }
@@ -106,7 +114,7 @@ Rectangle {
         
         MaterialSymbol {
             id: icon
-            property bool nearFull: quickSlider.value >= 0.9
+            property bool nearFull: quickSlider.visualPosition >= 0.9
             anchors {
                 verticalCenter: quickSlider.verticalCenter
                 right: nearFull ? quickSlider.handle.right : quickSlider.right

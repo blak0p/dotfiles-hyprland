@@ -57,7 +57,7 @@ Rectangle {
                 spacing: 0
 
                 ThemedText {
-                    text: SystemInfo.distroName || "Sistema"
+                    text: SystemInfo.distroName || Translation.tr("System")
                     font.pixelSize: Constants.sizeSm
                     font.bold: true
                     color: Theme.fg
@@ -66,7 +66,7 @@ Rectangle {
                 }
 
                 ThemedText {
-                    text: "Activo " + DateTime.uptime
+                    text: Translation.tr("Up %1").arg(DateTime.uptime)
                     font.pixelSize: Constants.size2Xs + 1
                     color: Theme.muted
                     elide: Text.ElideRight

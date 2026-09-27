@@ -55,7 +55,7 @@ Item {
         let targetProfile = profile;
         systemInfoService.powerProfile = targetProfile;
         setPowerProfileProc.running = false;
-        setPowerProfileProc.command = ["powerprofilesctl", "set", targetProfile];
+        setPowerProfileProc.command = ["/usr/bin/python3", "/usr/bin/powerprofilesctl", "set", targetProfile];
         setPowerProfileProc.running = true;
         if (targetProfile === "performance") {
             systemInfoService.performanceInterval = 1000;
@@ -88,7 +88,10 @@ Item {
         }
         if (SettingsService.settingsLoaded)
             SettingsService.saveSettings();
+    }
 
+    function setPowerProfile(profile) {
+        applyProfile(profile);
     }
 
     onPerformanceIntervalChanged: {
@@ -105,6 +108,20 @@ Item {
 
     Process {
         id: setPowerProfileProc
+    }
+
+    Process {
+        id: getPowerProfileProc
+        command: ["/usr/bin/python3", "/usr/bin/powerprofilesctl", "get"]
+        running: true
+        stdout: StdioCollector {
+            onTextChanged: {
+                let p = text.trim();
+                if (p === "performance" || p === "power-saver" || p === "balanced") {
+                    systemInfoService.powerProfile = p;
+                }
+            }
+        }
     }
 
     Process {

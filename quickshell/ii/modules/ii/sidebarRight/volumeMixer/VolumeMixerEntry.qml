@@ -14,15 +14,19 @@ Item {
         objects: [root.node]
     }
 
-    implicitHeight: rowLayout.implicitHeight
+    implicitHeight: rowLayout.implicitHeight + 8
 
     RowLayout {
         id: rowLayout
-        anchors.fill: parent
-        spacing: 6
+        anchors {
+            fill: parent
+            topMargin: 4
+            bottomMargin: 4
+        }
+        spacing: 10
 
         MouseArea {
-            property real size: 36
+            property real size: 40
             Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
             Layout.preferredWidth: size
             Layout.preferredHeight: size
@@ -33,7 +37,7 @@ Item {
             hoverEnabled: true
             property bool hovered: containsMouse
             StyledToolTip {
-                text: root.node?.audio.muted ? Translation.tr("Click to unmute") : Translation.tr("Click to mute")
+                text: (root.node && root.node.audio && root.node.audio.muted) ? Translation.tr("Click to unmute") : Translation.tr("Click to mute")
             }
 
             StyledImage {
@@ -42,10 +46,10 @@ Item {
                 visible: false
                 source: {
                     let icon;
-                    icon = AppSearch.guessIcon(root.node?.properties["application.icon-name"] ?? "");
+                    icon = AppSearch.guessIcon((root.node && root.node.properties) ? (root.node.properties["application.icon-name"] || "") : "");
                     if (AppSearch.iconExists(icon))
                         return Quickshell.iconPath(icon, "image-missing");
-                    icon = AppSearch.guessIcon(root.node?.properties["node.name"] ?? "");
+                    icon = AppSearch.guessIcon((root.node && root.node.properties) ? (root.node.properties["node.name"] || "") : "");
                     return Quickshell.iconPath(icon, "image-missing");
                 }
             }
@@ -53,9 +57,9 @@ Item {
             Desaturate {
                 anchors.fill: iconImg
                 source: iconImg
-                desaturation: root.node?.audio.muted ? 1.0 : 0.0
+                desaturation: (root.node && root.node.audio && root.node.audio.muted) ? 1.0 : 0.0
                 visible: iconImg.source !== ""
-                opacity: root.node?.audio.muted ? 0.4 : 1.0
+                opacity: (root.node && root.node.audio && root.node.audio.muted) ? 0.4 : 1.0
 
                 Behavior on opacity {
                     NumberAnimation {
@@ -71,34 +75,56 @@ Item {
 
             MaterialSymbol {
                 anchors.centerIn: parent
-                visible: root.node?.audio.muted ?? false
-                text: root.node?.isSink ? "volume_off" : "mic_off"
-                iconSize: 22
+                visible: Boolean(root.node && root.node.audio && root.node.audio.muted)
+                text: (root.node && root.node.isSink) ? "volume_off" : "mic_off"
+                iconSize: 24
                 color: Appearance.colors.colOnLayer1
             }
         }
 
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: -4
+            spacing: 2
 
             StyledText {
+                id: titleText
                 Layout.fillWidth: true
                 font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colSubtext
+                font.weight: Font.DemiBold
+                color: Appearance.colors.colOnLayer1
                 elide: Text.ElideRight
+                text: Audio.appNodeDisplayName(root.node)
+            }
+
+            StyledText {
+                id: subtitleText
+                Layout.fillWidth: true
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colSubtext
+                opacity: 0.85
+                elide: Text.ElideRight
+                visible: text.length > 0
                 text: {
-                    // application.name -> description -> name
-                    const app = Audio.appNodeDisplayName(root.node);
-                    const media = root.node.properties["media.name"];
-                    return media != undefined ? `${app} • ${media}` : app;
+                    const media = (root.node && root.node.properties) ? root.node.properties["media.name"] : null;
+                    if (!media) return "";
+                    const trimmed = media.trim();
+                    const lower = trimmed.toLowerCase();
+                    const appName = Audio.appNodeDisplayName(root.node).trim().toLowerCase();
+                    if (lower === "0" || lower === "1" || lower === "playback" || lower === appName) {
+                        return "";
+                    }
+                    return trimmed;
                 }
             }
 
             StyledSlider {
                 id: slider
-                value: root.node?.audio.volume ?? 0
-                onMoved: root.node.audio.volume = value
+                Layout.fillWidth: true
+                value: (root.node && root.node.audio) ? root.node.audio.volume : 0
+                onMoved: {
+                    if (root.node && root.node.audio)
+                        root.node.audio.volume = value;
+                }
                 configuration: StyledSlider.Configuration.S
             }
         }

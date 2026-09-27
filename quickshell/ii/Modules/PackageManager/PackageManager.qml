@@ -23,6 +23,54 @@ CenterWindow {
     property var selectedPackageObjects: ({
     })
     property string accumulatedSearchOutput: ""
+    readonly property bool updateCountsReady: /^\d+$/.test(UpdateService.cachyUpdatesCount) && /^\d+$/.test(UpdateService.homebrewUpdatesCount)
+    readonly property int cachyPendingCount: updateCountsReady ? Number(UpdateService.cachyUpdatesCount) : 0
+    readonly property int homebrewPendingCount: updateCountsReady ? Number(UpdateService.homebrewUpdatesCount) : 0
+    readonly property bool updateCountsChecking: !updateCountsReady || UpdateService.isCheckingUpdates
+    readonly property bool hasPendingUpdates: updateCountsReady && (cachyPendingCount > 0 || homebrewPendingCount > 0)
+
+    function updateSummary(name, count, source, description) {
+        return {
+            "name": name,
+            "version": count + " packages pending",
+            "repo": source,
+            "source": source,
+            "description": description,
+            "installed": true,
+            "isSummary": true
+        };
+    }
+
+    function selectAllUpdateResults() {
+        if (root.actionMode !== "update")
+            return ;
+
+        let arr = [];
+        let objs = {};
+        for (let i = 0; i < resultsModel.count; i++) {
+            let pkg = resultsModel.get(i);
+            arr.push(pkg.name);
+            objs[pkg.name] = {
+                "name": pkg.name,
+                "version": pkg.version,
+                "repo": pkg.repo,
+                "source": pkg.source,
+                "description": pkg.description,
+                "installed": pkg.installed
+            };
+        }
+        root.selectedPackages = arr;
+        root.selectedPackageObjects = objs;
+        root.updateModel();
+    }
+
+    function refreshUpdateResults() {
+        if (root.actionMode !== "update" || root.isSearching)
+            return ;
+
+        root.updateModel();
+        root.selectAllUpdateResults();
+    }
 
     function doSearch(query) {
         if (root.actionMode === "install") {
@@ -53,12 +101,19 @@ CenterWindow {
             currentPkgName = resultsModel.get(pkgView.currentIndex).name;
 
         resultsModel.clear();
-        let data = root.allResults;
+        let data = root.allResults.slice();
         if ((root.actionMode === "remove" || root.actionMode === "update") && root.searchText.length > 0) {
             let q = root.searchText.toLowerCase();
             data = data.filter(function(p) {
                 return p.name.toLowerCase().indexOf(q) !== -1 || p.description.toLowerCase().indexOf(q) !== -1;
             });
+        }
+        if (root.actionMode === "update" && root.updateCountsReady) {
+            if (data.length === 0 && root.cachyPendingCount > 0)
+                data.push(root.updateSummary("CachyOS updates", root.cachyPendingCount, "CachyOS", "CachyOS packages available for update"));
+
+            if (root.homebrewPendingCount > 0)
+                data.push(root.updateSummary("Homebrew updates", root.homebrewPendingCount, "Homebrew", "Homebrew packages available for upgrade"));
         }
         let selectedNames = root.selectedPackages;
         for (let i = 0; i < data.length; i++) {
@@ -154,10 +209,8 @@ CenterWindow {
             removeProc.command = ["kitty", "--class", "kitty-floating", "--hold", "-e", "bash", updateScript, "remove"].concat(root.selectedPackages);
             removeProc.startDetached();
         } else if (root.actionMode === "update") {
-            installProc.running = false;
-            installProc.command = ["kitty", "--class", "kitty-floating", "--hold", "-e", "bash", updateScript, "update"];
-            UpdateService.isSystemUpdating = true;
-            installProc.startDetached();
+            if (!UpdateService.runSystemUpdate())
+                return ;
         } else {
             installProc.running = false;
             installProc.command = ["kitty", "--class", "kitty-floating", "--hold", "-e", "bash", updateScript, "install"].concat(root.selectedPackages);
@@ -324,26 +377,9 @@ CenterWindow {
             if (exitCode === 0) {
                 try {
                     root.allResults = JSON.parse(root.accumulatedSearchOutput);
-                    if (root.actionMode === "update") {
-                        let arr = [];
-                        let objs = {
-                        };
-                        for (let i = 0; i < root.allResults.length; i++) {
-                            let pkg = root.allResults[i];
-                            arr.push(pkg.name);
-                            objs[pkg.name] = {
-                                "name": pkg.name,
-                                "version": pkg.version,
-                                "repo": pkg.repo,
-                                "source": pkg.source,
-                                "description": pkg.description,
-                                "installed": pkg.installed
-                            };
-                        }
-                        root.selectedPackages = arr;
-                        root.selectedPackageObjects = objs;
-                    }
                     root.updateModel();
+                    if (root.actionMode === "update")
+                        root.selectAllUpdateResults();
                 } catch (e) {
                     console.error("PackageManager: Error parsing search results: " + e);
                     root.allResults = [];
@@ -362,12 +398,22 @@ CenterWindow {
 
     }
 
+    Connections {
+        target: UpdateService
+
+        function onCachyUpdatesCountChanged() {
+            root.refreshUpdateResults();
+        }
+
+        function onHomebrewUpdatesCountChanged() {
+            root.refreshUpdateResults();
+        }
+    }
+
     Process {
         id: installProc
 
-        onExited: (code) => {
-            UpdateService.isSystemUpdating = false;
-        }
+
     }
 
     Process {
@@ -539,10 +585,18 @@ CenterWindow {
             GhostEmptyState {
                 anchors.centerIn: parent
                 visible: resultsModel.count === 0 && !root.isSearching && !debounceTimer.running && !(root.actionMode === "install" && root.searchText.length < 2)
-                icon: root.actionMode === "update" ? "check" : "ghost"
+                icon: root.actionMode === "update" && root.updateCountsChecking ? "reload" : root.actionMode === "update" ? "check" : "ghost"
                 iconColor: root.actionMode === "update" ? Theme.accent : Theme.muted
-                text: root.actionMode === "update" ? Translation.tr("System is up to date") : Translation.tr("No packages found")
-                isAnimating: visible && root.actionMode !== "update"
+                text: {
+                    if (root.actionMode !== "update")
+                        return Translation.tr("No packages found");
+                    if (root.updateCountsChecking)
+                        return Translation.tr("Checking updates...");
+                    if (root.hasPendingUpdates)
+                        return root.cachyPendingCount + root.homebrewPendingCount + " " + Translation.tr("packages pending");
+                    return Translation.tr("System is up to date");
+                }
+                isAnimating: visible && (root.actionMode !== "update" || root.updateCountsChecking)
             }
 
             ColumnLayout {
