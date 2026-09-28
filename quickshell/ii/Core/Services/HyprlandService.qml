@@ -178,10 +178,12 @@ Item {
     }
     onKeyboardLayoutChanged: {
         if (SettingsService.settingsLoaded) {
-            SettingsService.saveSettings();
-            changeLayoutProc.command = ["hyprctl", "eval", "hl.config({ input = { kb_layout = '" + keyboardLayout + "' } })"];
-            changeLayoutProc.running = false;
-            changeLayoutProc.running = true;
+            if (keyboardLayout === "us" || keyboardLayout === "latam" || keyboardLayout === "es") {
+                SettingsService.saveSettings();
+                changeLayoutProc.command = ["hyprctl", "eval", "hl.config({ input = { kb_layout = '" + keyboardLayout + "' } })"];
+                changeLayoutProc.running = false;
+                changeLayoutProc.running = true;
+            }
         }
     }
     onHyprBlurChanged: {
@@ -307,9 +309,11 @@ Item {
         repeat: false
         onTriggered: {
             startupAnimations();
-            changeLayoutProc.command = ["hyprctl", "eval", "hl.config({ input = { kb_layout = '" + hyprlandService.keyboardLayout + "' } })"];
-            changeLayoutProc.running = false;
-            changeLayoutProc.running = true;
+            if (hyprlandService.keyboardLayout === "us" || hyprlandService.keyboardLayout === "latam" || hyprlandService.keyboardLayout === "es") {
+                changeLayoutProc.command = ["hyprctl", "eval", "hl.config({ input = { kb_layout = '" + hyprlandService.keyboardLayout + "' } })"];
+                changeLayoutProc.running = false;
+                changeLayoutProc.running = true;
+            }
         }
     }
 
@@ -366,14 +370,15 @@ Item {
                     return ;
 
                 let raw = data.trim();
-                let code = "us";
-                if (raw.includes("Spanish"))
+                let code = "";
+                if (raw.includes("Spanish") || raw === "latam" || raw === "es")
                     code = "latam";
-                else if (raw.includes("English"))
+                else if (raw.includes("English") || raw === "us")
                     code = "us";
                 else
-                    code = raw;
-                if (hyprlandService.keyboardLayout !== code)
+                    return ;
+
+                if (code && hyprlandService.keyboardLayout !== code)
                     hyprlandService.keyboardLayout = code;
 
             }

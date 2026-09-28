@@ -374,5 +374,25 @@ Scope {
         description: "Toggles Control Center"
         onPressed: AppState.togglePopup("controlCenter")
     }
+
+    IpcHandler {
+        target: "jarvis"
+
+        function listening(): void {
+            JarvisService.setListening();
+        }
+
+        function transcribing(): void {
+            JarvisService.setTranscribing();
+        }
+
+        function dictating(active: bool): void {
+            JarvisService.setDictating(active);
+        }
+
+        function idle(): void {
+            JarvisService.setIdle();
+        }
+    }
 }
 

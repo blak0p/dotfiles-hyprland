@@ -58,6 +58,21 @@ except ImportError:
         return False
 
 
+def notify_quickshell_ipc(method: str, *args: str) -> None:
+    """Invokes Quickshell IPC target 'jarvis' asynchronously without blocking."""
+    if not shutil.which("qs"):
+        return
+    cmd = ["qs", "-c", "ii", "ipc", "call", "jarvis", method] + list(args)
+    try:
+        subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        pass
+
+
 def send_notification(summary: str, body: str = "", icon: str = "dialog-information") -> None:
     """Sends desktop notification if notify-send is available."""
     if shutil.which("notify-send"):
@@ -155,6 +170,7 @@ def dispatch_transcript(
     }
 
     if action == "enter_dictation":
+        notify_quickshell_ipc("dictating", "true")
         msg = "Modo transcripción activado"
         result["message"] = msg
         result["dictation_mode"] = True
@@ -165,6 +181,7 @@ def dispatch_transcript(
             speak_feedback(msg, wait=wait_tts)
 
     elif action == "exit_dictation":
+        notify_quickshell_ipc("dictating", "false")
         msg = "Modo control activado"
         result["message"] = msg
         result["dictation_mode"] = False

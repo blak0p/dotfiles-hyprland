@@ -41,6 +41,7 @@ singleton HyprlandXkb 1.0 HyprlandXkb.qml
 singleton Hyprsunset 1.0 Hyprsunset.qml
 singleton Idle 1.0 Idle.qml
 singleton IdleService 1.0 IdleService.qml
+singleton JarvisService 1.0 JarvisService.qml
 singleton KeyringStorage 1.0 KeyringStorage.qml
 singleton LatexRenderer 1.0 LatexRenderer.qml
 singleton LauncherApps 1.0 LauncherApps.qml

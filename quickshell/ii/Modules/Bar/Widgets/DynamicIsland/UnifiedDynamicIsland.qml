@@ -38,14 +38,14 @@ Rectangle {
     property bool isAiMode: AppState.activePopup === "ai"
     readonly property bool isNotifActive: currentMode === "notif"
     readonly property bool isCritical: isNotifActive && IslandState.isCritical(IslandState.activeNotification)
-    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard" || currentMode === "notif" || currentMode === "workspaceRename" || currentMode === "volume" || currentMode === "ai"
+    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard" || currentMode === "notif" || currentMode === "workspaceRename" || currentMode === "volume" || currentMode === "ai" || JarvisService.isBusy
 
     width: implicitWidth
     height: implicitHeight
     radius: 24
     color: Theme.bg
     border.width: 1
-    border.color: isCritical ? Theme.accent : (isNotifActive ? Qt.rgba(1, 1, 1, 0.18) : Qt.rgba(1, 1, 1, 0.08))
+    border.color: isCritical ? Theme.accent : (JarvisService.isListening ? Theme.accent : (isNotifActive ? Qt.rgba(1, 1, 1, 0.18) : Qt.rgba(1, 1, 1, 0.08)))
     clip: true
 
     readonly property bool isSubViewOpen: dashboardActiveTab === 3 && (controlCenterView ? controlCenterView.currentSubView !== "home" : false)
@@ -236,6 +236,156 @@ Rectangle {
                         openDashboardTimer.stop();
                         AppState.activePopup = "dashboard";
                     }
+                }
+            }
+
+            // JARVIS DICTATION BADGE (Modo Dictado)
+            Rectangle {
+                id: jarvisDictationBadge
+                visible: JarvisService.dictationActive
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: visible ? (dictationRow.implicitWidth + 14) : 0
+                implicitHeight: 24
+                radius: 12
+                color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
+                border.width: 1
+                border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.45)
+
+                RowLayout {
+                    id: dictationRow
+                    anchors.centerIn: parent
+                    spacing: 5
+
+                    SvgIcon {
+                        icon: "microphone"
+                        iconSize: 11
+                        iconColor: Theme.accent
+                        flat: true
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    ThemedText {
+                        text: "DICTADO"
+                        font.pixelSize: 10
+                        font.bold: true
+                        font.letterSpacing: 0.6
+                        color: Theme.accent
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+                }
+
+                Behavior on implicitWidth {
+                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                }
+            }
+
+            // JARVIS ACTIVITY (Listening Orb/Pill / Transcribing Indicator)
+            Item {
+                id: jarvisActivityArea
+                visible: JarvisService.status !== "idle"
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: visible ? jarvisPill.implicitWidth : 0
+                implicitHeight: 28
+
+                // Pulsing aura for listening state
+                Rectangle {
+                    id: jarvisPulseAura
+                    anchors.centerIn: parent
+                    width: jarvisPill.width + 10
+                    height: jarvisPill.height + 4
+                    radius: height / 2
+                    color: Theme.accent
+                    visible: JarvisService.isListening
+                    opacity: 0.3
+
+                    SequentialAnimation on opacity {
+                        running: jarvisActivityArea.visible && JarvisService.isListening
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 0.12; to: 0.45; duration: 650; easing.type: Easing.InOutQuad }
+                        NumberAnimation { from: 0.45; to: 0.12; duration: 650; easing.type: Easing.InOutQuad }
+                    }
+
+                    SequentialAnimation on scale {
+                        running: jarvisActivityArea.visible && JarvisService.isListening
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 0.96; to: 1.06; duration: 650; easing.type: Easing.InOutQuad }
+                        NumberAnimation { from: 1.06; to: 0.96; duration: 650; easing.type: Easing.InOutQuad }
+                    }
+                }
+
+                Rectangle {
+                    id: jarvisPill
+                    anchors.centerIn: parent
+                    implicitHeight: 26
+                    implicitWidth: jarvisPillRow.implicitWidth + 18
+                    radius: 13
+                    color: JarvisService.isListening 
+                        ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22)
+                        : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.08)
+                    border.width: 1
+                    border.color: JarvisService.isListening ? Theme.accent : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.2)
+
+                    RowLayout {
+                        id: jarvisPillRow
+                        anchors.centerIn: parent
+                        spacing: 7
+
+                        // Glowing Orb / Indicator
+                        Item {
+                            width: 14
+                            height: 14
+                            Layout.alignment: Qt.AlignVCenter
+
+                            // Listening pulsing orb
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 9
+                                height: 9
+                                radius: 4.5
+                                color: Theme.accent
+                                visible: JarvisService.isListening
+
+                                SequentialAnimation on scale {
+                                    running: jarvisActivityArea.visible && JarvisService.isListening
+                                    loops: Animation.Infinite
+                                    NumberAnimation { from: 0.8; to: 1.25; duration: 450; easing.type: Easing.InOutSine }
+                                    NumberAnimation { from: 1.25; to: 0.8; duration: 450; easing.type: Easing.InOutSine }
+                                }
+                            }
+
+                            // Transcribing subtle waiting spinner/dots
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 11
+                                height: 11
+                                radius: 5.5
+                                color: "transparent"
+                                border.width: 2
+                                border.color: Theme.accent
+                                visible: JarvisService.isTranscribing
+
+                                NumberAnimation on rotation {
+                                    running: jarvisActivityArea.visible && JarvisService.isTranscribing
+                                    from: 0
+                                    to: 360
+                                    duration: 900
+                                    loops: Animation.Infinite
+                                }
+                            }
+                        }
+
+                        ThemedText {
+                            text: JarvisService.isListening ? "Escuchando..." : (JarvisService.isTranscribing ? "Transcribiendo..." : "")
+                            font.pixelSize: 11
+                            font.bold: true
+                            color: JarvisService.isListening ? Theme.accent : Theme.fg
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+                    }
+                }
+
+                Behavior on implicitWidth {
+                    NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
                 }
             }
 

@@ -15,6 +15,7 @@ import sys
 import os
 import signal
 import time
+import shutil
 import subprocess
 import json
 import urllib.request
@@ -25,6 +26,21 @@ AUDIO_FILE = "/tmp/jarvis_input.wav"
 DEFAULT_SERVER_URL = "http://127.0.0.1:8085/inference"
 IDLE_STOP_UNIT = "whisper-idle-stop"
 IDLE_TIMEOUT_SECONDS = 120
+
+
+def notify_quickshell_ipc(method: str, *args: str) -> None:
+    """Invokes Quickshell IPC target 'jarvis' asynchronously without blocking."""
+    if not shutil.which("qs"):
+        return
+    cmd = ["qs", "-c", "ii", "ipc", "call", "jarvis", method] + list(args)
+    try:
+        subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        pass
 
 
 def cancel_idle_timer():
@@ -132,6 +148,8 @@ def start_recording(audio_path: str = AUDIO_FILE) -> int:
     with open(PID_FILE, "w") as f:
         f.write(str(proc.pid))
 
+    notify_quickshell_ipc("listening")
+
     return proc.pid
 
 
@@ -144,6 +162,8 @@ def stop_recording(audio_path: str = AUDIO_FILE) -> bool:
             except OSError:
                 pass
         return False
+
+    notify_quickshell_ipc("transcribing")
 
     try:
         # SIGINT signals pw-record to finish and write headers cleanly
@@ -245,6 +265,7 @@ def main():
 
     if args.action == "server-stop":
         cancel_idle_timer()
+        notify_quickshell_ipc("idle")
         subprocess.run(["systemctl", "--user", "stop", "whisper-server.service"])
         if args.json:
             print(json.dumps({"status": "stopped"}))
@@ -286,6 +307,7 @@ def main():
         stopped = stop_recording(args.file)
         text = transcribe(args.file, args.server, args.language, auto_stop) if stopped else ""
         dispatch_res = handle_dispatch(text)
+        notify_quickshell_ipc("idle")
         if args.json:
             out = {"status": "transcribed", "text": text}
             if dispatch_res is not None:
@@ -296,8 +318,10 @@ def main():
         sys.exit(0)
 
     elif args.action == "transcribe":
+        notify_quickshell_ipc("transcribing")
         text = transcribe(args.file, args.server, args.language, auto_stop)
         dispatch_res = handle_dispatch(text)
+        notify_quickshell_ipc("idle")
         if args.json:
             out = {"status": "transcribed", "text": text}
             if dispatch_res is not None:
@@ -314,6 +338,7 @@ def main():
             stop_recording(args.file)
             text = transcribe(args.file, args.server, args.language, auto_stop)
             dispatch_res = handle_dispatch(text)
+            notify_quickshell_ipc("idle")
             if args.json:
                 out = {"status": "transcribed", "text": text}
                 if dispatch_res is not None:
