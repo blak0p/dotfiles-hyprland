@@ -228,9 +228,20 @@ def main():
     parser.add_argument("-l", "--language", default="es", help="Transcription language (default: es)")
     parser.add_argument("--json", action="store_true", help="Output result as JSON")
     parser.add_argument("--no-idle-stop", action="store_true", help="Do not schedule auto-stop after transcription")
+    parser.add_argument("--dispatch", action="store_true", help="Dispatch transcript to Jarvis dispatcher on stop/transcribe")
 
     args = parser.parse_args()
     auto_stop = not args.no_idle_stop
+
+    def handle_dispatch(transcribed_text: str):
+        if not args.dispatch or not transcribed_text:
+            return None
+        try:
+            from jarvis_dispatcher import dispatch_transcript
+            return dispatch_transcript(transcribed_text)
+        except Exception as e:
+            print(f"Error during dispatch: {e}", file=sys.stderr)
+            return None
 
     if args.action == "server-stop":
         cancel_idle_timer()
@@ -274,16 +285,24 @@ def main():
     elif args.action == "stop":
         stopped = stop_recording(args.file)
         text = transcribe(args.file, args.server, args.language, auto_stop) if stopped else ""
+        dispatch_res = handle_dispatch(text)
         if args.json:
-            print(json.dumps({"status": "transcribed", "text": text}))
+            out = {"status": "transcribed", "text": text}
+            if dispatch_res is not None:
+                out["dispatch"] = dispatch_res
+            print(json.dumps(out))
         else:
             print(text)
         sys.exit(0)
 
     elif args.action == "transcribe":
         text = transcribe(args.file, args.server, args.language, auto_stop)
+        dispatch_res = handle_dispatch(text)
         if args.json:
-            print(json.dumps({"status": "transcribed", "text": text}))
+            out = {"status": "transcribed", "text": text}
+            if dispatch_res is not None:
+                out["dispatch"] = dispatch_res
+            print(json.dumps(out))
         else:
             print(text)
         sys.exit(0)
@@ -294,8 +313,12 @@ def main():
             # Currently recording -> stop and transcribe
             stop_recording(args.file)
             text = transcribe(args.file, args.server, args.language, auto_stop)
+            dispatch_res = handle_dispatch(text)
             if args.json:
-                print(json.dumps({"status": "transcribed", "text": text}))
+                out = {"status": "transcribed", "text": text}
+                if dispatch_res is not None:
+                    out["dispatch"] = dispatch_res
+                print(json.dumps(out))
             else:
                 print(text)
         else:
