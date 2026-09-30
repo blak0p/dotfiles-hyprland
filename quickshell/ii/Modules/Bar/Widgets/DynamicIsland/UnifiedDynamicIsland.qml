@@ -349,6 +349,14 @@ Rectangle {
                     border.width: 1
                     border.color: JarvisService.isListening ? Theme.accent : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.2)
 
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            Quickshell.execDetached(["python3", Quickshell.shellPath("scripts/jarvis_audio.py"), "toggle", "--dispatch"]);
+                        }
+                    }
+
                     RowLayout {
                         id: jarvisPillRow
                         anchors.centerIn: parent
@@ -462,6 +470,14 @@ Rectangle {
 
         Behavior on opacity { NumberAnimation { duration: 180 } }
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                Quickshell.execDetached(["python3", Quickshell.shellPath("scripts/jarvis_audio.py"), "toggle", "--dispatch"]);
+            }
+        }
 
         RowLayout {
             anchors.centerIn: parent
@@ -618,7 +634,7 @@ Rectangle {
                 ThemedText {
                     text: {
                         if (JarvisService.dictationActive) return Translation.tr("Dictation mode active");
-                        if (JarvisService.isListening) return Translation.tr("Press again to send");
+                        if (JarvisService.isListening) return Translation.tr("Habla o pulsa para enviar");
                         if (JarvisService.isTranscribing) return Translation.tr("Processing audio...");
                         if (JarvisService.isThinking) return Translation.tr("Thinking response...");
                         if (JarvisService.isSpeaking) return Translation.tr("Speaking...");

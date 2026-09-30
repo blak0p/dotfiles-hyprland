@@ -20,6 +20,9 @@ import subprocess
 import json
 import urllib.request
 import argparse
+import array
+import math
+import wave
 
 PID_FILE = "/tmp/jarvis_recording.pid"
 AUDIO_FILE = "/tmp/jarvis_input.wav"
@@ -250,13 +253,154 @@ def transcribe(
             schedule_idle_timer(IDLE_TIMEOUT_SECONDS)
 
 
+def follow_up_listen(
+    audio_path: str = AUDIO_FILE,
+    server_url: str = DEFAULT_SERVER_URL,
+    language: str = "es",
+    auto_stop_idle: bool = True,
+    initial_timeout: float = 6.0,
+    silence_duration: float = 1.3,
+    max_duration: float = 12.0,
+) -> str:
+    """Listens automatically for user response with VAD (Voice Activity Detection).
+
+    Arms recording immediately, waits for voice within initial_timeout.
+    Once speech starts, keeps recording until silence_duration is observed or max_duration.
+    Transcribes audio and returns text. If no voice detected, returns "".
+    """
+    existing_pid = get_recording_pid()
+    if existing_pid:
+        return ""
+
+    notify_quickshell_ipc("listening")
+    ensure_whisper_started()
+    ensure_llama_started()
+
+    # Clean previous audio file
+    if os.path.exists(audio_path):
+        try:
+            os.remove(audio_path)
+        except OSError:
+            pass
+
+    proc = subprocess.Popen(
+        [
+            "pw-record",
+            "--rate", "16000",
+            "--channels", "1",
+            "--format", "s16",
+            "-",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+    with open(PID_FILE, "w") as f:
+        f.write(str(proc.pid))
+
+    pcm_buffer = bytearray()
+    chunk_size = 3200  # 100ms chunks at 16kHz 16-bit mono
+
+    # 1. Calibrate ambient baseline over first 300ms
+    baseline_samples = []
+    for _ in range(3):
+        chunk = proc.stdout.read(chunk_size)
+        if not chunk:
+            break
+        pcm_buffer.extend(chunk)
+        shorts = array.array("h")
+        shorts.frombytes(chunk)
+        if shorts:
+            baseline_samples.append(math.sqrt(sum(s * s for s in shorts) / len(shorts)))
+
+    baseline = sum(baseline_samples) / max(len(baseline_samples), 1) if baseline_samples else 300.0
+    vad_threshold = max(baseline * 2.2, 850.0)
+
+    has_voice = False
+    voice_chunks = 0
+    silence_time = 0.0
+    start_time = time.time()
+
+    try:
+        while True:
+            chunk = proc.stdout.read(chunk_size)
+            if not chunk:
+                break
+            pcm_buffer.extend(chunk)
+
+            shorts = array.array("h")
+            shorts.frombytes(chunk)
+            rms = math.sqrt(sum(s * s for s in shorts) / len(shorts)) if shorts else 0.0
+
+            if not has_voice:
+                if rms >= vad_threshold:
+                    voice_chunks += 1
+                    if voice_chunks >= 2:  # 200ms sustained sound
+                        has_voice = True
+                        silence_time = 0.0
+                else:
+                    voice_chunks = 0
+                    if time.time() - start_time >= initial_timeout:
+                        # Timeout waiting for user to start speaking
+                        break
+            else:
+                # Voice was detected; now detect silence at the end
+                if rms < vad_threshold:
+                    silence_time += 0.1
+                    if silence_time >= silence_duration:
+                        # User stopped speaking!
+                        break
+                else:
+                    silence_time = 0.0
+
+                if time.time() - start_time >= max_duration:
+                    break
+    finally:
+        try:
+            if proc.stdout:
+                proc.stdout.close()
+            proc.terminate()
+            proc.wait(timeout=1.0)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+
+        if os.path.exists(PID_FILE):
+            try:
+                os.remove(PID_FILE)
+            except OSError:
+                pass
+
+    if not has_voice or len(pcm_buffer) < 3200 * 4:  # less than 400ms of audio
+        notify_quickshell_ipc("idle")
+        return ""
+
+    # Write buffered PCM frames to WAV file
+    try:
+        with wave.open(audio_path, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(16000)
+            wf.writeframes(pcm_buffer)
+    except Exception as e:
+        print(f"Error writing WAV file: {e}", file=sys.stderr)
+        notify_quickshell_ipc("idle")
+        return ""
+
+    notify_quickshell_ipc("transcribing")
+    return transcribe(audio_path, server_url, language, auto_stop_idle)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Jarvis audio recorder & Whisper transcriber")
     parser.add_argument(
         "action",
         nargs="?",
         default="toggle",
-        choices=["toggle", "start", "stop", "status", "transcribe", "server-stop"],
+        choices=["toggle", "start", "stop", "status", "transcribe", "server-stop", "follow-up"],
         help="Action to perform (default: toggle)",
     )
     parser.add_argument("-f", "--file", default=AUDIO_FILE, help="Audio file path")
@@ -265,11 +409,14 @@ def main():
     parser.add_argument("--json", action="store_true", help="Output result as JSON")
     parser.add_argument("--no-idle-stop", action="store_true", help="Do not schedule auto-stop after transcription")
     parser.add_argument("--dispatch", action="store_true", help="Dispatch transcript to Jarvis dispatcher on stop/transcribe")
+    parser.add_argument("--follow-up", action="store_true", help="Run VAD auto-listening follow-up")
 
     args = parser.parse_args()
     auto_stop = not args.no_idle_stop
+    if args.follow_up:
+        args.action = "follow-up"
 
-    if args.action in ("toggle", "start", "stop", "transcribe"):
+    if args.action in ("toggle", "start", "stop", "transcribe", "follow-up"):
         try:
             import fcntl
             lock_fd = open("/tmp/jarvis_audio.lock", "w")
@@ -382,6 +529,19 @@ def main():
                 print(json.dumps({"status": "recording", "pid": new_pid}))
             else:
                 print(f"RECORDING:{new_pid}")
+        sys.exit(0)
+
+    elif args.action == "follow-up":
+        text = follow_up_listen(args.file, args.server, args.language, auto_stop)
+        dispatch_res = handle_dispatch(text) if text else None
+        notify_quickshell_ipc("idle")
+        if args.json:
+            out = {"status": "transcribed" if text else "timeout", "text": text}
+            if dispatch_res is not None:
+                out["dispatch"] = dispatch_res
+            print(json.dumps(out))
+        else:
+            print(text)
         sys.exit(0)
 
 

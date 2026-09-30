@@ -14,6 +14,22 @@ import argparse
 DEFAULT_VOICE = os.path.expanduser("~/.local/share/piper-voices/es_ES-davefx-medium.onnx")
 PIPER_BIN = "/usr/bin/piper-tts"
 DEFAULT_VOLUME = float(os.environ.get("JARVIS_TTS_VOLUME", "0.25"))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def is_question_text(text: str) -> bool:
+    """Detects if text contains a question or prompts for a user answer."""
+    if not text:
+        return False
+    lower = text.lower()
+    if "?" in text or "¿" in text:
+        return True
+    prompt_indicators = [
+        "cuál prefieres", "cuál quieres", "cuál deseas",
+        "qué prefieres", "qué quieres", "qué deseas",
+        "elijas", "elige", "dime cuál", "confirma",
+    ]
+    return any(p in lower for p in prompt_indicators)
 
 
 def notify_quickshell_ipc(method: str, *args: str) -> None:
@@ -103,7 +119,19 @@ def speak(
 
         piper_proc.communicate(input=text.encode("utf-8"))
         player_proc.wait()
-        notify_quickshell_ipc("idle")
+
+        # Follow-up auto listening if spoken text asks a question
+        jarvis_audio_script = os.path.join(SCRIPT_DIR, "jarvis_audio.py")
+        if followup_if_question and is_question_text(text) and os.path.exists(jarvis_audio_script):
+            subprocess.Popen(
+                [sys.executable, jarvis_audio_script, "follow-up", "--dispatch"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        else:
+            notify_quickshell_ipc("idle")
+
         return player_proc.returncode == 0
     except Exception as e:
         print(f"Error during TTS playback: {e}", file=sys.stderr)
@@ -118,6 +146,7 @@ def main():
     parser.add_argument("-o", "--output", default=None, help="Save to WAV file instead of playing")
     parser.add_argument("-s", "--speed", type=float, default=1.0, help="Speech speed multiplier (default: 1.0)")
     parser.add_argument("--volume", type=float, default=DEFAULT_VOLUME, help="Speech volume (0.0 to 1.0, default: 0.25)")
+    parser.add_argument("--no-followup", action="store_true", help="Disable automatic follow-up listening for questions")
 
     args = parser.parse_args()
 
@@ -129,7 +158,14 @@ def main():
     if not text:
         sys.exit(0)
 
-    success = speak(text, voice=args.voice, output_wav=args.output, speed=args.speed, volume=args.volume)
+    success = speak(
+        text,
+        voice=args.voice,
+        output_wav=args.output,
+        speed=args.speed,
+        volume=args.volume,
+        followup_if_question=not args.no_followup,
+    )
     sys.exit(0 if success else 1)
 
 
