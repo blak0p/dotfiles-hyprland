@@ -76,7 +76,7 @@ def ensure_llama_server_running(timeout: float = 5.0) -> bool:
 
 
 SYSTEM_PROMPT = """You are a lightning-fast, concise desktop assistant embedded in a Hyprland Linux Dynamic Island.
-You have access to tools for live web search, local filesystem inspection, launching desktop applications, and controlling Spotify playback.
+You have access to tools for live web search, local filesystem inspection, launching desktop applications, controlling Spotify playback, and checking remaining AI model usage quotas across connected providers.
 IMPORTANT: Detect the user's language and ALWAYS answer in the exact same language (e.g., Spanish if asked in Spanish).
 Keep your answers direct, crisp, and formatted in clean markdown without fluff or pleasantries, as the display area is a compact floating card.
 Do not repeat or quote raw tool outputs; summarize the answer cleanly."""
@@ -160,6 +160,22 @@ TOOLS = [
                     }
                 },
                 "required": ["action"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_ai_quotas",
+            "description": "Checks remaining AI model usage quotas, rate limits, and reset times across connected providers (Codex, Antigravity, Claude, Gemini, OpenAI, etc.) using codexbar.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "provider": {
+                        "type": "string",
+                        "description": "Optional provider name to filter by, e.g. 'codex', 'antigravity', 'claude', or null for all connected providers."
+                    }
+                }
             }
         }
     }
@@ -460,6 +476,80 @@ def perform_spotify_control(action: str, query: str = None) -> str:
     emit({"type": "tool_done", "name": "spotify_control", "preview": res})
     return res
 
+def perform_check_ai_quotas(provider: str = None) -> str:
+    emit({"type": "tool_start", "name": "check_ai_quotas", "args": {"provider": provider}})
+    codexbar_bin = shutil.which("codexbar") or "/home/linuxbrew/.linuxbrew/bin/codexbar"
+    if not os.path.exists(codexbar_bin):
+        res = "Error: codexbar binary not found on system."
+        emit({"type": "tool_done", "name": "check_ai_quotas", "preview": res})
+        return res
+
+    cmd = [codexbar_bin, "usage", "--json"]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        if proc.returncode != 0 or not proc.stdout.strip():
+            res = f"Error querying codexbar: {proc.stderr.strip() or 'No output'}"
+            emit({"type": "tool_done", "name": "check_ai_quotas", "preview": res})
+            return res
+
+        data = json.loads(proc.stdout)
+        lines = []
+        for item in data:
+            prov = item.get("provider", "unknown")
+            if provider and provider.strip().lower() not in prov.lower():
+                continue
+            usage = item.get("usage", {})
+            email = usage.get("accountEmail") or item.get("identity", {}).get("accountEmail", "")
+            header = f"### Provider: {prov.capitalize()}" + (f" ({email})" if email else "")
+            lines.append(header)
+
+            labels = item.get("rateWindowLabels", {})
+            extra = usage.get("extraRateWindows")
+            if extra and isinstance(extra, list):
+                for ew in extra:
+                    title = ew.get("title", "Quota")
+                    w = ew.get("window", {})
+                    used = w.get("usedPercent", 0)
+                    rem = max(0.0, 100.0 - float(used))
+                    reset_desc = w.get("resetDescription") or ""
+                    desc_str = f" (Resets: {reset_desc})" if reset_desc else ""
+                    lines.append(f"- {title}: {rem:.1f}% remaining ({used:.1f}% used){desc_str}")
+            else:
+                primary = usage.get("primary")
+                if primary and isinstance(primary, dict):
+                    p_label = labels.get("primary", "Primary window")
+                    used = primary.get("usedPercent", 0)
+                    rem = max(0.0, 100.0 - float(used))
+                    reset_desc = primary.get("resetDescription") or ""
+                    desc_str = f" (Resets: {reset_desc})" if reset_desc else ""
+                    lines.append(f"- {p_label}: {rem:.1f}% remaining ({used:.1f}% used){desc_str}")
+
+                secondary = usage.get("secondary")
+                if secondary and isinstance(secondary, dict):
+                    s_label = labels.get("secondary", "Secondary window")
+                    used = secondary.get("usedPercent", 0)
+                    rem = max(0.0, 100.0 - float(used))
+                    reset_desc = secondary.get("resetDescription") or ""
+                    desc_str = f" (Resets: {reset_desc})" if reset_desc else ""
+                    lines.append(f"- {s_label}: {rem:.1f}% remaining ({used:.1f}% used){desc_str}")
+
+            credits_obj = usage.get("codexResetCredits")
+            if credits_obj and isinstance(credits_obj, dict):
+                avail = credits_obj.get("availableCount", 0)
+                if avail:
+                    lines.append(f"- Reset credits available: {avail}")
+
+            lines.append("")
+
+        res = "\n".join(lines).strip() or f"No quota data found for provider '{provider}'."
+        preview = res[:100] + "..." if len(res) > 100 else res
+        emit({"type": "tool_done", "name": "check_ai_quotas", "preview": preview})
+        return res
+    except Exception as e:
+        res = f"Error reading AI quotas: {e}"
+        emit({"type": "tool_done", "name": "check_ai_quotas", "preview": res})
+        return res
+
 def perform_web_search(query):
     emit({"type": "tool_start", "name": "web_search", "args": {"query": query}})
     try:
@@ -665,6 +755,8 @@ def main():
                 res_str = perform_launch_app(func_args.get("app_name", ""))
             elif func_name == "spotify_control":
                 res_str = perform_spotify_control(func_args.get("action", ""), func_args.get("query", None))
+            elif func_name == "check_ai_quotas":
+                res_str = perform_check_ai_quotas(func_args.get("provider", None))
             else:
                 res_str = f"Unknown tool {func_name}"
                 

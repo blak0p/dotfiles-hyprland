@@ -129,6 +129,8 @@ def set_dictation_mode(active: bool) -> None:
 def type_to_focused_window(text: str) -> bool:
     """Types text directly into the currently focused Wayland window via wtype.
 
+    Sanitizes newlines and tabs to single spaces so chat apps and web chatbots
+    do not trigger premature message submission (Enter key press).
     Appends a trailing space for natural continuous dictation flow.
     Uses argument list passing to avoid shell escaping issues.
     """
@@ -140,7 +142,11 @@ def type_to_focused_window(text: str) -> bool:
         print("Error: wtype binary not found in system", file=sys.stderr)
         return False
 
-    text_with_space = text.rstrip() + " "
+    # Flatten any line breaks / tabs into spaces to prevent wtype from simulating Enter
+    flattened_text = " ".join(text.split())
+    if not flattened_text:
+        return False
+    text_with_space = flattened_text + " "
     try:
         proc = subprocess.run(
             [wtype_exe, "--", text_with_space],
