@@ -25,7 +25,7 @@ PID_FILE = "/tmp/jarvis_recording.pid"
 AUDIO_FILE = "/tmp/jarvis_input.wav"
 DEFAULT_SERVER_URL = "http://127.0.0.1:8085/inference"
 IDLE_STOP_UNIT = "whisper-idle-stop"
-IDLE_TIMEOUT_SECONDS = 120
+IDLE_TIMEOUT_SECONDS = 20
 
 
 def notify_quickshell_ipc(method: str, *args: str) -> None:
@@ -85,6 +85,19 @@ def ensure_whisper_started():
         )
 
 
+def ensure_llama_started():
+    """Starts llama-server.service in background if not already running."""
+    res = subprocess.run(
+        ["systemctl", "--user", "is-active", "--quiet", "llama-server.service"]
+    )
+    if res.returncode != 0:
+        subprocess.Popen(
+            ["systemctl", "--user", "start", "llama-server.service"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+
 def wait_for_whisper_ready(server_url: str = DEFAULT_SERVER_URL, timeout: float = 6.0) -> bool:
     """Waits until whisper-server HTTP endpoint is responding."""
     start_time = time.time()
@@ -124,8 +137,9 @@ def start_recording(audio_path: str = AUDIO_FILE) -> int:
     # Notify visual island immediately for zero perceptible UI latency
     notify_quickshell_ipc("listening")
 
-    # Warm up Whisper server in parallel while user speaks
+    # Warm up Whisper and LLaMA servers in parallel while user speaks
     ensure_whisper_started()
+    ensure_llama_started()
 
     # Clean previous audio file
     if os.path.exists(audio_path):
@@ -200,39 +214,40 @@ def transcribe(
     language: str = "es",
     auto_stop_idle: bool = True,
 ) -> str:
-    if not os.path.exists(audio_path):
-        return ""
-
-    if os.path.getsize(audio_path) < 500:
-        return ""
-
-    # Ensure server is ready before posting audio
-    wait_for_whisper_ready(server_url)
-
-    cmd = [
-        "curl", "-s",
-        "-F", f"file=@{audio_path}",
-        "-F", "response_format=json",
-        "-F", f"language={language}",
-        server_url,
-    ]
-
-    text = ""
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        if result.returncode == 0 and result.stdout:
-            data = json.loads(result.stdout)
-            text = data.get("text", "").strip()
-        else:
-            print(f"Whisper server error: {result.stderr}", file=sys.stderr)
-    except Exception as e:
-        print(f"Error during transcription: {e}", file=sys.stderr)
+        if not os.path.exists(audio_path):
+            return ""
 
-    # Schedule shutdown after 120s of idle time
-    if auto_stop_idle:
-        schedule_idle_timer(IDLE_TIMEOUT_SECONDS)
+        if os.path.getsize(audio_path) < 500:
+            return ""
 
-    return text
+        # Ensure server is ready before posting audio
+        wait_for_whisper_ready(server_url)
+
+        cmd = [
+            "curl", "-s",
+            "-F", f"file=@{audio_path}",
+            "-F", "response_format=json",
+            "-F", f"language={language}",
+            server_url,
+        ]
+
+        text = ""
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if result.returncode == 0 and result.stdout:
+                data = json.loads(result.stdout)
+                text = data.get("text", "").strip()
+            else:
+                print(f"Whisper server error: {result.stderr}", file=sys.stderr)
+        except Exception as e:
+            print(f"Error during transcription: {e}", file=sys.stderr)
+
+        return text
+    finally:
+        # Schedule shutdown after inactivity
+        if auto_stop_idle:
+            schedule_idle_timer(IDLE_TIMEOUT_SECONDS)
 
 
 def main():

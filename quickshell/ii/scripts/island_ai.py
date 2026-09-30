@@ -12,14 +12,71 @@ import difflib
 import shlex
 import shutil
 import subprocess
+import time
 import unicodedata
 
 SESSION_FILE = "/tmp/quickshell_island_ai_session.json"
 ENDPOINT = "http://127.0.0.1:8090/v1/chat/completions"
 MODEL = "gemma-4"
+LLAMA_IDLE_STOP_UNIT = "llama-idle-stop"
+LLAMA_IDLE_TIMEOUT_SECONDS = 60
+
+
+def cancel_llama_idle_timer():
+    """Cancels any pending llama-server idle stop timer."""
+    subprocess.run(
+        ["systemctl", "--user", "stop", f"{LLAMA_IDLE_STOP_UNIT}.timer"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def schedule_llama_idle_timer(seconds: int = LLAMA_IDLE_TIMEOUT_SECONDS):
+    """Schedules automatic stop of llama-server.service after inactivity."""
+    cancel_llama_idle_timer()
+    subprocess.run(
+        [
+            "systemd-run",
+            "--user",
+            f"--unit={LLAMA_IDLE_STOP_UNIT}",
+            f"--on-active={seconds}s",
+            "systemctl",
+            "--user",
+            "stop",
+            "llama-server.service",
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def ensure_llama_server_running(timeout: float = 5.0) -> bool:
+    """Ensures llama-server.service is running and ready to accept HTTP requests."""
+    cancel_llama_idle_timer()
+    res = subprocess.run(
+        ["systemctl", "--user", "is-active", "--quiet", "llama-server.service"]
+    )
+    if res.returncode != 0:
+        subprocess.run(
+            ["systemctl", "--user", "start", "llama-server.service"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        start_t = time.time()
+        while time.time() - start_t < timeout:
+            try:
+                req = urllib.request.Request("http://127.0.0.1:8090/v1/models")
+                with urllib.request.urlopen(req, timeout=0.5) as r:
+                    if r.status == 200:
+                        return True
+            except Exception:
+                time.sleep(0.1)
+        return False
+    return True
+
 
 SYSTEM_PROMPT = """You are a lightning-fast, concise desktop assistant embedded in a Hyprland Linux Dynamic Island.
-You have access to tools for live web search, local filesystem inspection, launching desktop applications, controlling Spotify playback, and starting coding sessions.
+You have access to tools for live web search, local filesystem inspection, launching desktop applications, and controlling Spotify playback.
 IMPORTANT: Detect the user's language and ALWAYS answer in the exact same language (e.g., Spanish if asked in Spanish).
 Keep your answers direct, crisp, and formatted in clean markdown without fluff or pleasantries, as the display area is a compact floating card.
 Do not repeat or quote raw tool outputs; summarize the answer cleanly."""
@@ -103,26 +160,6 @@ TOOLS = [
                     }
                 },
                 "required": ["action"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "start_coding_session",
-            "description": "Initiates a coding session in a project directory using herdr and a coding agent (default: pi).",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "project_name": {
-                        "type": "string",
-                        "description": "Name of the project folder in ~/dev/ to work on."
-                    },
-                    "agent": {
-                        "type": "string",
-                        "description": "Coding agent to launch, e.g. 'pi' (default: 'pi')."
-                    }
-                }
             }
         }
     }
@@ -423,90 +460,6 @@ def perform_spotify_control(action: str, query: str = None) -> str:
     emit({"type": "tool_done", "name": "spotify_control", "preview": res})
     return res
 
-def perform_start_coding_session(project_name: str = None, agent: str = "pi") -> str:
-    emit({"type": "tool_start", "name": "start_coding_session", "args": {"project_name": project_name, "agent": agent}})
-    dev_root = os.path.expanduser("~/dev")
-    if not os.path.exists(dev_root):
-        dev_root = "/home/alejandro/dev"
-
-    subdirs = []
-    if os.path.exists(dev_root):
-        try:
-            subdirs = sorted([
-                d for d in os.listdir(dev_root)
-                if os.path.isdir(os.path.join(dev_root, d)) and not d.startswith(".")
-            ])
-        except Exception:
-            subdirs = []
-
-    if not project_name or not project_name.strip():
-        listing = ", ".join(subdirs) if subdirs else "none found"
-        res = f"Please specify which project in ~/dev/ you would like to work on. Available projects:\n{listing}"
-        emit({"type": "tool_done", "name": "start_coding_session", "preview": "Awaiting project selection"})
-        return res
-
-    target_query = project_name.strip()
-    matched_dir = None
-
-    # 1. Exact match (case insensitive)
-    for d in subdirs:
-        if d.lower() == target_query.lower():
-            matched_dir = d
-            break
-
-    # 2. Substring match
-    if not matched_dir:
-        for d in subdirs:
-            if target_query.lower() in d.lower():
-                matched_dir = d
-                break
-
-    # 3. Fuzzy match
-    if not matched_dir:
-        best_ratio = 0.0
-        best_cand = None
-        for d in subdirs:
-            ratio = difflib.SequenceMatcher(None, target_query.lower(), d.lower()).ratio()
-            if ratio > best_ratio and ratio >= 0.5:
-                best_ratio = ratio
-                best_cand = d
-        if best_cand:
-            matched_dir = best_cand
-
-    if not matched_dir:
-        res = f"Project '{project_name}' not found in ~/dev/. Available projects: {', '.join(subdirs)}"
-        emit({"type": "tool_done", "name": "start_coding_session", "preview": res})
-        return res
-
-    project_path = os.path.join(dev_root, matched_dir)
-    chosen_agent = (agent or "pi").strip()
-
-    herdr_bin = "/home/linuxbrew/.linuxbrew/bin/herdr"
-    pi_bin = "/home/linuxbrew/.linuxbrew/bin/pi"
-    kitty_bin = shutil.which("kitty") or "/usr/bin/kitty"
-
-    if chosen_agent.lower() in ("herdr", "pi"):
-        target_bin = herdr_bin if os.path.exists(herdr_bin) else (pi_bin if os.path.exists(pi_bin) else shutil.which("herdr") or shutil.which("pi") or "herdr")
-    else:
-        target_bin = shutil.which(chosen_agent) or (f"/home/linuxbrew/.linuxbrew/bin/{chosen_agent}" if os.path.exists(f"/home/linuxbrew/.linuxbrew/bin/{chosen_agent}") else herdr_bin)
-
-    cmd = [kitty_bin, "--directory", project_path, target_bin]
-    try:
-        subprocess.Popen(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            stdin=subprocess.DEVNULL,
-            start_new_session=True,
-        )
-        res = f"Started coding session for '{matched_dir}' with agent '{chosen_agent}' in {project_path}."
-        emit({"type": "tool_done", "name": "start_coding_session", "preview": res})
-        return res
-    except Exception as e:
-        res = f"Failed to start coding session in {project_path}: {e}"
-        emit({"type": "tool_done", "name": "start_coding_session", "preview": res})
-        return res
-
 def perform_web_search(query):
     emit({"type": "tool_start", "name": "web_search", "args": {"query": query}})
     try:
@@ -573,6 +526,7 @@ def perform_list_dir(path):
         return f"Error: {e}"
 
 def call_llm(messages, use_tools=True, stream=True):
+    ensure_llama_server_running()
     payload = {
         "model": MODEL,
         "messages": messages,
@@ -711,8 +665,6 @@ def main():
                 res_str = perform_launch_app(func_args.get("app_name", ""))
             elif func_name == "spotify_control":
                 res_str = perform_spotify_control(func_args.get("action", ""), func_args.get("query", None))
-            elif func_name == "start_coding_session":
-                res_str = perform_start_coding_session(func_args.get("project_name", None), func_args.get("agent", "pi"))
             else:
                 res_str = f"Unknown tool {func_name}"
                 
@@ -741,6 +693,8 @@ def main():
             json.dump(history_to_save, f)
     except:
         pass
+
+    schedule_llama_idle_timer()
 
 if __name__ == "__main__":
     main()
