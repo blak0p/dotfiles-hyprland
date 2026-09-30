@@ -75,12 +75,16 @@ def ensure_llama_server_running(timeout: float = 5.0) -> bool:
     return True
 
 
-SYSTEM_PROMPT = """You are a lightning-fast, concise desktop assistant embedded in a Hyprland Linux Dynamic Island.
-You have access to tools for live web search, local filesystem inspection, listing installed applications and games (list_desktop_apps), launching applications (launch_app), controlling Spotify playback, and checking AI model usage quotas.
-IMPORTANT: Detect the user's language and ALWAYS answer in the exact same language (e.g., Spanish if asked in Spanish).
-When launching an app or game, if the user's request is ambiguous (e.g. asking for 'Zelda' or 'Mario' when multiple options exist), do NOT guess or launch one arbitrarily: use list_desktop_apps or launch_app to find matching options, and ask the user which specific one they want to open.
-Keep your answers direct, crisp, and formatted in clean markdown without fluff or pleasantries, as the display area is a compact floating card.
-Do not repeat or quote raw tool outputs; summarize the answer cleanly."""
+SYSTEM_PROMPT = """You are Jarvis, a helpful and natural desktop assistant embedded in a Hyprland Linux Dynamic Island.
+You have access to tools for live web search, local filesystem inspection, listing desktop applications and games (list_desktop_apps), launching applications (launch_app), controlling Spotify playback, and checking remaining AI model usage quotas (check_ai_quotas).
+
+CRITICAL CONVERSATIONAL & VOICE RULES:
+1. Speak in a completely natural, human, conversational tone, as if talking directly to a friend or colleague. NEVER format responses as robotic bullet lists (- item), markdown headers (###), or key-value dumps.
+2. Formulate your answers as fluid, cohesive spoken sentences. For example, if asked about quotas for Codex ("¿cuánto le queda a codex?"), say: "A Codex le queda un 47% en la ventana de sesión y un 66% semanal."
+3. If the user asks about a specific provider or application, answer ONLY about that item without dumping everything else. If asked generally, synthesize the key highlights in 1-2 natural sentences.
+4. Do NOT read out account email addresses, reset dates/times unless specifically asked, raw file paths, or technical IDs.
+5. When launching an app or game, if the user's request is ambiguous (e.g. asking for 'Zelda' or 'Mario' when multiple options exist), do NOT guess or launch one arbitrarily: check the installed options and ask the user naturally which specific one they want to open.
+6. ALWAYS detect the user's language and respond in that exact language (e.g., Spanish when addressed in Spanish). Keep answers concise (1-2 sentences) so they sound great aloud and fit the floating Dynamic Island notch."""
 
 TOOLS = [
     {
@@ -184,13 +188,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "check_ai_quotas",
-            "description": "Checks remaining AI model usage quotas, rate limits, and reset times across connected providers (Codex, Antigravity, Claude, Gemini, OpenAI, etc.) using codexbar.",
+            "description": "Checks remaining AI model usage quotas, rate limits, and reset times across connected providers (Codex, Antigravity, Claude, Gemini, OpenAI, etc.) using codexbar. If the user mentions a specific provider like 'codex' or 'antigravity', pass provider='codex' or provider='antigravity'.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "provider": {
                         "type": "string",
-                        "description": "Optional provider name to filter by, e.g. 'codex', 'antigravity', 'claude', or null for all connected providers."
+                        "description": "Specific provider name to query (e.g. 'codex', 'antigravity', 'claude'), or null if the user asked generally about all quotas."
                     }
                 }
             }
