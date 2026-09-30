@@ -6,12 +6,14 @@ import Quickshell
 QtObject {
     id: root
 
-    // Jarvis states: "idle" | "listening" | "transcribing"
+    // Jarvis states: "idle" | "listening" | "transcribing" | "thinking" | "speaking"
     property string status: "idle"
     property bool dictationActive: false
 
     readonly property bool isListening: status === "listening"
     readonly property bool isTranscribing: status === "transcribing"
+    readonly property bool isThinking: status === "thinking"
+    readonly property bool isSpeaking: status === "speaking"
     readonly property bool isBusy: status !== "idle"
 
     function setListening(): void {
@@ -20,6 +22,14 @@ QtObject {
 
     function setTranscribing(): void {
         status = "transcribing";
+    }
+
+    function setThinking(): void {
+        status = "thinking";
+    }
+
+    function setSpeaking(): void {
+        status = "speaking";
     }
 
     function setDictating(active: var): void {

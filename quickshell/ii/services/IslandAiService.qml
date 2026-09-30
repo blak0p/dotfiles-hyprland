@@ -133,11 +133,18 @@ Singleton {
                             let cleanText = root.response.replace(/[*_#`\[\]]/g, "").replace(/\n+/g, " ").trim();
                             Quickshell.execDetached(["python3", Quickshell.shellPath("scripts/jarvis_tts.py"), cleanText]);
                             root.speakVoice = false;
+                        } else if (root.speakVoice) {
+                            JarvisService.setIdle();
+                            root.speakVoice = false;
                         }
                     } else if (ev.type === "error") {
                         root.running = false;
                         root.error = ev.message;
                         root.status = "";
+                        if (root.speakVoice) {
+                            JarvisService.setIdle();
+                            root.speakVoice = false;
+                        }
                     }
                 } catch (e) {
                     console.warn("[IslandAiService] parse error:", line, e);

@@ -360,6 +360,14 @@ Scope {
             JarvisService.setTranscribing();
         }
 
+        function thinking(): void {
+            JarvisService.setThinking();
+        }
+
+        function speaking(): void {
+            JarvisService.setSpeaking();
+        }
+
         function dictating(active: bool): void {
             JarvisService.setDictating(active);
         }
@@ -379,8 +387,8 @@ Scope {
         }
 
         function askWithVoice(prompt: string): void {
-            JarvisService.setIdle();
-            AppState.openPopup("ai");
+            AppState.activePopup = "";
+            JarvisService.setThinking();
             IslandAiService.speakVoice = true;
             IslandAiService.ask(prompt);
         }

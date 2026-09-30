@@ -543,6 +543,58 @@ Rectangle {
                         loops: Animation.Infinite
                     }
                 }
+
+                // Thinking Rotating Sparkles
+                SvgIcon {
+                    anchors.centerIn: parent
+                    icon: "sparkles"
+                    iconSize: 16
+                    iconColor: Theme.accent
+                    flat: true
+                    visible: JarvisService.isThinking
+
+                    RotationAnimation on rotation {
+                        running: jarvisContainer.visible && JarvisService.isThinking
+                        loops: Animation.Infinite
+                        from: 0
+                        to: 360
+                        duration: 1200
+                    }
+                }
+
+                // Speaking Audio Waveform Visualizer
+                Row {
+                    anchors.centerIn: parent
+                    spacing: 2.5
+                    visible: JarvisService.isSpeaking
+
+                    Repeater {
+                        model: 4
+                        delegate: Rectangle {
+                            required property int index
+                            width: 3
+                            height: 6
+                            radius: 1.5
+                            color: Theme.accent
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            SequentialAnimation on height {
+                                running: jarvisContainer.visible && JarvisService.isSpeaking
+                                loops: Animation.Infinite
+                                NumberAnimation {
+                                    to: index === 1 || index === 2 ? 18 : 11
+                                    duration: 220 + (index * 70)
+                                    easing.type: Easing.InOutQuad
+                                }
+                                NumberAnimation {
+                                    to: 5
+                                    duration: 220 + (index * 70)
+                                    easing.type: Easing.InOutQuad
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // Labels: State Title + Subtitle
@@ -551,14 +603,27 @@ Rectangle {
                 Layout.alignment: Qt.AlignVCenter
 
                 ThemedText {
-                    text: JarvisService.isListening ? Translation.tr("Listening...") : (JarvisService.isTranscribing ? Translation.tr("Transcribing...") : "Jarvis")
+                    text: {
+                        if (JarvisService.isListening) return Translation.tr("Listening...");
+                        if (JarvisService.isTranscribing) return Translation.tr("Transcribing...");
+                        if (JarvisService.isThinking) return Translation.tr("Thinking...");
+                        if (JarvisService.isSpeaking) return "Jarvis";
+                        return "Jarvis";
+                    }
                     font.pixelSize: 13
                     font.bold: true
-                    color: JarvisService.isListening ? Theme.accent : Theme.fg
+                    color: (JarvisService.isListening || JarvisService.isThinking || JarvisService.isSpeaking) ? Theme.accent : Theme.fg
                 }
 
                 ThemedText {
-                    text: JarvisService.dictationActive ? Translation.tr("Dictation mode active") : (JarvisService.isListening ? Translation.tr("Press again to send") : Translation.tr("Processing audio..."))
+                    text: {
+                        if (JarvisService.dictationActive) return Translation.tr("Dictation mode active");
+                        if (JarvisService.isListening) return Translation.tr("Press again to send");
+                        if (JarvisService.isTranscribing) return Translation.tr("Processing audio...");
+                        if (JarvisService.isThinking) return Translation.tr("Thinking response...");
+                        if (JarvisService.isSpeaking) return Translation.tr("Speaking...");
+                        return "";
+                    }
                     font.pixelSize: 10
                     color: Theme.muted
                 }

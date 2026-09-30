@@ -829,5 +829,7 @@
     "Press again to send": "Vuelve a pulsar para enviar",
     "Transcribing...": "Transcribiendo...",
     "Processing audio...": "Procesando audio localmente...",
-    "Dictation mode active": "Modo dictado activo"
+    "Dictation mode active": "Modo dictado activo",
+    "Thinking response...": "Pensando respuesta...",
+    "Speaking...": "Respondiendo..."
 }

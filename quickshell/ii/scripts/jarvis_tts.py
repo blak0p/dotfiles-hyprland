@@ -16,6 +16,17 @@ PIPER_BIN = "/usr/bin/piper-tts"
 DEFAULT_VOLUME = float(os.environ.get("JARVIS_TTS_VOLUME", "0.25"))
 
 
+def notify_quickshell_ipc(method: str, *args: str) -> None:
+    """Notifies Quickshell Jarvis IPC target without blocking."""
+    if not shutil.which("qs"):
+        return
+    cmd = ["qs", "-c", "ii", "ipc", "call", "jarvis", method] + list(args)
+    try:
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
+
 def speak(
     text: str,
     voice: str = DEFAULT_VOICE,
@@ -74,6 +85,7 @@ def speak(
         player_cmd = [player_bin, "-"]
 
     try:
+        notify_quickshell_ipc("speaking")
         piper_proc = subprocess.Popen(
             piper_cmd,
             stdin=subprocess.PIPE,
@@ -91,9 +103,11 @@ def speak(
 
         piper_proc.communicate(input=text.encode("utf-8"))
         player_proc.wait()
+        notify_quickshell_ipc("idle")
         return player_proc.returncode == 0
     except Exception as e:
         print(f"Error during TTS playback: {e}", file=sys.stderr)
+        notify_quickshell_ipc("idle")
         return False
 
 

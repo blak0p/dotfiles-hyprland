@@ -823,5 +823,7 @@
     "Press again to send": "Press again to send",
     "Transcribing...": "Transcribing...",
     "Processing audio...": "Processing audio locally...",
-    "Dictation mode active": "Dictation mode active"
+    "Dictation mode active": "Dictation mode active",
+    "Thinking response...": "Thinking response...",
+    "Speaking...": "Speaking..."
 }
