@@ -26,6 +26,7 @@ Rectangle {
     property bool isFullscreen: HyprlandData.hasFullscreen
 
     property string currentMode: {
+        if (JarvisService.status !== "idle") return "jarvis";
         if (root.isAiMode || AppState.activePopup === "ai") return "ai";
         if (AppState.activePopup === "workspaceRename") return "workspaceRename";
         if (AppState.activePopup === "launcher") return "launcher";
@@ -38,14 +39,14 @@ Rectangle {
     property bool isAiMode: AppState.activePopup === "ai"
     readonly property bool isNotifActive: currentMode === "notif"
     readonly property bool isCritical: isNotifActive && IslandState.isCritical(IslandState.activeNotification)
-    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard" || currentMode === "notif" || currentMode === "workspaceRename" || currentMode === "volume" || currentMode === "ai" || JarvisService.isBusy
+    readonly property bool isExpanded: currentMode === "launcher" || currentMode === "dashboard" || currentMode === "notif" || currentMode === "workspaceRename" || currentMode === "volume" || currentMode === "jarvis" || currentMode === "ai" || JarvisService.isBusy
 
     width: implicitWidth
     height: implicitHeight
     radius: 24
     color: Theme.bg
     border.width: 1
-    border.color: isCritical ? Theme.accent : (JarvisService.isListening ? Theme.accent : (isNotifActive ? Qt.rgba(1, 1, 1, 0.18) : Qt.rgba(1, 1, 1, 0.08)))
+    border.color: isCritical ? Theme.accent : (JarvisService.isListening ? Theme.accent : (JarvisService.isTranscribing ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.7) : (currentMode === "ai" ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5) : (isNotifActive ? Qt.rgba(1, 1, 1, 0.18) : Qt.rgba(1, 1, 1, 0.08)))))
     clip: true
 
     readonly property bool isSubViewOpen: dashboardActiveTab === 3 && (controlCenterView ? controlCenterView.currentSubView !== "home" : false)
@@ -69,6 +70,7 @@ Rectangle {
         if (currentMode === "ai") return 720;
         if (currentMode === "launcher") return searchQuery !== "" ? 720 : 480;
         if (currentMode === "notif") return 480;
+        if (currentMode === "jarvis") return 360;
         return idleContentRow.implicitWidth + 32;
     }
 
@@ -100,6 +102,7 @@ Rectangle {
         if (currentMode === "notif") {
             return Math.max(110, notifNotchColumn.implicitHeight + 28);
         }
+        if (currentMode === "jarvis") return 54;
         return 48;
     }
 
@@ -115,6 +118,27 @@ Rectangle {
         NumberAnimation {
             duration: 300
             easing.type: Easing.OutCubic
+        }
+    }
+
+    focus: root.isExpanded
+
+    Keys.onPressed: (event) => {
+        if (event.key === Qt.Key_Escape) {
+            if (root.currentMode === "ai" || AppState.activePopup === "ai") {
+                IslandAiService.clearSession();
+                AppState.activePopup = "";
+                event.accepted = true;
+            } else if (root.currentMode === "launcher" || AppState.activePopup === "launcher") {
+                AppState.activePopup = "";
+                event.accepted = true;
+            } else if (root.currentMode === "workspaceRename" || AppState.activePopup === "workspaceRename") {
+                AppState.activePopup = "";
+                event.accepted = true;
+            } else if (root.currentMode === "dashboard" || AppState.activePopup === "dashboard" || AppState.activePopup === "controlCenter") {
+                AppState.activePopup = "";
+                event.accepted = true;
+            }
         }
     }
 
@@ -427,6 +451,154 @@ Rectangle {
     }
 
     // ==========================================
+    // 1b. JARVIS VOICE ISLAND VIEW (Active Voice Notch)
+    // ==========================================
+    Item {
+        id: jarvisContainer
+        anchors.fill: parent
+        opacity: root.currentMode === "jarvis" ? 1 : 0
+        scale: root.currentMode === "jarvis" ? 1 : 0.88
+        visible: opacity > 0
+
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+
+        RowLayout {
+            anchors.centerIn: parent
+            spacing: 12
+
+            // Visual Voice Indicator: Glowing Orb + Pulsing Aura / Spinner
+            Item {
+                width: 26
+                height: 26
+                Layout.alignment: Qt.AlignVCenter
+
+                // Pulsing outer aura ring
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.width
+                    height: parent.height
+                    radius: width / 2
+                    color: "transparent"
+                    border.width: 2
+                    border.color: Theme.accent
+                    opacity: 0.4
+                    visible: JarvisService.isListening
+
+                    SequentialAnimation on scale {
+                        running: jarvisContainer.visible && JarvisService.isListening
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 0.85; to: 1.25; duration: 600; easing.type: Easing.InOutQuad }
+                        NumberAnimation { from: 1.25; to: 0.85; duration: 600; easing.type: Easing.InOutQuad }
+                    }
+                    SequentialAnimation on opacity {
+                        running: jarvisContainer.visible && JarvisService.isListening
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 0.6; to: 0.15; duration: 600; easing.type: Easing.InOutQuad }
+                        NumberAnimation { from: 0.15; to: 0.6; duration: 600; easing.type: Easing.InOutQuad }
+                    }
+                }
+
+                // Core Microphone Orb
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 18
+                    height: 18
+                    radius: 9
+                    color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.25)
+                    visible: JarvisService.isListening
+
+                    SvgIcon {
+                        anchors.centerIn: parent
+                        icon: "microphone"
+                        iconSize: 11
+                        iconColor: Theme.accent
+                        flat: true
+                    }
+
+                    SequentialAnimation on scale {
+                        running: jarvisContainer.visible && JarvisService.isListening
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 0.9; to: 1.15; duration: 450; easing.type: Easing.InOutSine }
+                        NumberAnimation { from: 1.15; to: 0.9; duration: 450; easing.type: Easing.InOutSine }
+                    }
+                }
+
+                // Transcribing Rotating Spinner
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 18
+                    height: 18
+                    radius: 9
+                    color: "transparent"
+                    border.width: 2.5
+                    border.color: Theme.accent
+                    visible: JarvisService.isTranscribing
+
+                    NumberAnimation on rotation {
+                        running: jarvisContainer.visible && JarvisService.isTranscribing
+                        from: 0
+                        to: 360
+                        duration: 800
+                        loops: Animation.Infinite
+                    }
+                }
+            }
+
+            // Labels: State Title + Subtitle
+            ColumnLayout {
+                spacing: 1
+                Layout.alignment: Qt.AlignVCenter
+
+                ThemedText {
+                    text: JarvisService.isListening ? Translation.tr("Listening...") : (JarvisService.isTranscribing ? Translation.tr("Transcribing...") : "Jarvis")
+                    font.pixelSize: 13
+                    font.bold: true
+                    color: JarvisService.isListening ? Theme.accent : Theme.fg
+                }
+
+                ThemedText {
+                    text: JarvisService.dictationActive ? Translation.tr("Dictation mode active") : (JarvisService.isListening ? Translation.tr("Press again to send") : Translation.tr("Processing audio..."))
+                    font.pixelSize: 10
+                    color: Theme.muted
+                }
+            }
+
+            // Optional DICTADO tag if dictation active
+            Rectangle {
+                visible: JarvisService.dictationActive
+                implicitWidth: dictRowVoice.implicitWidth + 10
+                implicitHeight: 20
+                radius: 10
+                color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.2)
+                border.width: 1
+                border.color: Theme.accent
+                Layout.alignment: Qt.AlignVCenter
+
+                RowLayout {
+                    id: dictRowVoice
+                    anchors.centerIn: parent
+                    spacing: 4
+
+                    SvgIcon {
+                        icon: "microphone"
+                        iconSize: 9
+                        iconColor: Theme.accent
+                        flat: true
+                    }
+
+                    ThemedText {
+                        text: "DICTADO"
+                        font.pixelSize: 9
+                        font.bold: true
+                        color: Theme.accent
+                    }
+                }
+            }
+        }
+    }
+
+    // ==========================================
     // 2. NOTIFICATION VIEW (Notch)
     // ==========================================
     Item {
@@ -477,7 +649,7 @@ Rectangle {
 
                 ThemedText {
                     text: {
-                        let app = IslandState.activeNotification?.appName || Translation.tr("Notification");
+                        let app = IslandState.activeNotification?.appName || "Notificación";
                         let count = IslandState.activeNotification?.appMessageCount || 1;
                         return count > 1 ? (app + " (" + count + ")") : app;
                     }
@@ -654,8 +826,6 @@ Rectangle {
         return `image://icon/${iconName}`;
     }
 
-    ListModel { id: searchModel }
-
     function switchToAi(q) {
         if (!q || q.trim() === "") return;
         const queryText = q.replace(/^\?\?\s*/, "").trim();
@@ -664,6 +834,8 @@ Rectangle {
         AppState.openPopup("ai");
         IslandAiService.ask(queryText);
     }
+
+    ListModel { id: searchModel }
 
     function updateSearchModel() {
         searchModel.clear();
@@ -674,7 +846,7 @@ Rectangle {
             const entry = results[i];
             searchModel.append({
                 name: entry.name || "",
-                category: (entry.categories && entry.categories.length > 0) ? entry.categories[0] : (entry.comment || Translation.tr("App")),
+                category: (entry.categories && entry.categories.length > 0) ? entry.categories[0] : (entry.comment || "Aplicación"),
                 iconName: entry.icon || "application-x-executable",
                 rawEntry: entry
             });
@@ -723,8 +895,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
                 focus: root.currentMode === "launcher"
-                activeFocusOnTab: false
-                placeholderText: Translation.tr("Search apps, or press Tab to chat with AI...")
+                placeholderText: "Search applications, commands (>)..."
                 placeholderTextColor: Theme.muted
                 font.family: Constants.fontFamily
                 font.pixelSize: 14
@@ -739,17 +910,13 @@ Rectangle {
                     updateSearchModel();
                 }
 
-                Keys.priority: Keys.BeforeItem
                 Keys.onTabPressed: (event) => {
                     if (text.trim() !== "") {
-                        root.switchToAi(text);
-                    } else {
-                        text = "";
-                        AppState.openPopup("ai");
-                        IslandAiService.warmup();
+                        switchToAi(text);
+                        event.accepted = true;
                     }
-                    event.accepted = true;
                 }
+
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Escape) {
                         if (text !== "") text = "";
@@ -757,13 +924,9 @@ Rectangle {
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Tab) {
                         if (text.trim() !== "") {
-                            root.switchToAi(text);
-                        } else {
-                            text = "";
-                            AppState.openPopup("ai");
-                            IslandAiService.warmup();
+                            switchToAi(text);
+                            event.accepted = true;
                         }
-                        event.accepted = true;
                     } else if (event.key === Qt.Key_Down) {
                         if (searchListView.count > 0) {
                             root.selectedIndex = Math.min(root.selectedIndex + 1, searchListView.count - 1);
@@ -781,8 +944,6 @@ Rectangle {
                     if (searchListView.count > 0 && root.selectedIndex >= 0 && root.selectedIndex < searchListView.count) {
                         const item = searchModel.get(root.selectedIndex);
                         if (item && item.rawEntry) launchEntry(item.rawEntry);
-                    } else if (text.trim() !== "") {
-                        root.switchToAi(text);
                     }
                 }
             }
@@ -896,6 +1057,15 @@ Rectangle {
         spacing: 8
         opacity: root.currentMode === "ai" ? 1 : 0
         visible: opacity > 0
+        focus: root.currentMode === "ai"
+
+        Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_Escape) {
+                IslandAiService.clearSession();
+                AppState.activePopup = "";
+                event.accepted = true;
+            }
+        }
 
         Behavior on opacity { NumberAnimation { duration: 180 } }
 
@@ -1001,22 +1171,39 @@ Rectangle {
             }
 
             Rectangle {
-                Layout.preferredHeight: 22
-                Layout.preferredWidth: 38
+                id: aiCloseBtn
+                Layout.preferredHeight: 26
+                Layout.preferredWidth: closeBtnRow.implicitWidth + 14
                 Layout.alignment: Qt.AlignVCenter
-                radius: 11
-                color: Qt.rgba(1, 1, 1, 0.08)
+                radius: 13
+                color: closeMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.16) : Qt.rgba(1, 1, 1, 0.08)
 
-                ThemedText {
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                RowLayout {
+                    id: closeBtnRow
                     anchors.centerIn: parent
-                    text: "ESC"
-                    font.pixelSize: Constants.size3Xs
-                    font.bold: true
-                    color: Theme.muted
+                    spacing: 4
+
+                    SvgIcon {
+                        icon: "x"
+                        iconSize: 10
+                        iconColor: closeMouseArea.containsMouse ? Theme.fg : Theme.muted
+                        flat: true
+                    }
+
+                    ThemedText {
+                        text: "ESC"
+                        font.pixelSize: Constants.size3Xs
+                        font.bold: true
+                        color: closeMouseArea.containsMouse ? Theme.fg : Theme.muted
+                    }
                 }
 
                 MouseArea {
+                    id: closeMouseArea
                     anchors.fill: parent
+                    hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         IslandAiService.clearSession();
@@ -1337,7 +1524,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
             focus: root.currentMode === "workspaceRename"
-            placeholderText: "Nombre del workspace..."
+            placeholderText: Translation.tr("Workspace name...")
             placeholderTextColor: Theme.muted
             font.family: Constants.fontFamily
             font.pixelSize: 14

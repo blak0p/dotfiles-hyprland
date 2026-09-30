@@ -19,6 +19,7 @@ Singleton {
     property string response: ""
     property string error: ""
     property var toolHistory: []
+    property bool speakVoice: false
     readonly property string script: Quickshell.shellPath("scripts/island_ai.py")
 
     function ask(userQuery, reset = false) {
@@ -50,6 +51,7 @@ Singleton {
         aiProcess.running = false;
         running = false;
         status = "";
+        speakVoice = false;
     }
 
     function warmup() {
@@ -127,6 +129,11 @@ Singleton {
                         root.running = false;
                         root.status = "";
                         root.activeTool = "";
+                        if (root.speakVoice && root.response && root.response.trim().length > 0) {
+                            let cleanText = root.response.replace(/[*_#`\[\]]/g, "").replace(/\n+/g, " ").trim();
+                            Quickshell.execDetached(["python3", Quickshell.shellPath("scripts/jarvis_tts.py"), cleanText]);
+                            root.speakVoice = false;
+                        }
                     } else if (ev.type === "error") {
                         root.running = false;
                         root.error = ev.message;

@@ -105,16 +105,17 @@ def speak_feedback(text: str, wait: bool = False) -> None:
         t.start()
 
 
-def forward_to_assistant(text: str, open_quickshell: bool = True) -> bool:
+def forward_to_assistant(text: str, open_quickshell: bool = True, speak_voice: bool = True) -> bool:
     """Forwards a prompt to the AI desktop assistant (island_ai / Quickshell)."""
     if not text or not text.strip():
         return False
 
     # 1. Try Quickshell IPC (opens Dynamic Island AI popup)
     if open_quickshell and shutil.which("qs"):
+        target_method = "askWithVoice" if speak_voice else "ask"
         try:
             res = subprocess.run(
-                ["qs", "-c", "ii", "ipc", "call", "ai", "ask", text],
+                ["qs", "-c", "ii", "ipc", "call", "ai", target_method, text],
                 capture_output=True,
                 text=True,
                 timeout=2,
@@ -195,7 +196,7 @@ def dispatch_transcript(
         forward_cmd = eval_result.get("forward_text")
         if forward_cmd:
             result["forward_text"] = forward_cmd
-            result["forwarded"] = forward_to_assistant(forward_cmd)
+            result["forwarded"] = forward_to_assistant(forward_cmd, speak_voice=speak_audio)
 
     elif action == "type_text":
         typed_text = eval_result.get("text", text)
@@ -206,7 +207,7 @@ def dispatch_transcript(
     elif action == "forward_assistant":
         forward_text = eval_result.get("text", text)
         result["text"] = forward_text
-        ok = forward_to_assistant(forward_text)
+        ok = forward_to_assistant(forward_text, speak_voice=speak_audio)
         result["forwarded"] = ok
 
     return result

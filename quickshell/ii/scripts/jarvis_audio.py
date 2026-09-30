@@ -121,6 +121,9 @@ def start_recording(audio_path: str = AUDIO_FILE) -> int:
     if existing_pid:
         return existing_pid
 
+    # Notify visual island immediately for zero perceptible UI latency
+    notify_quickshell_ipc("listening")
+
     # Warm up Whisper server in parallel while user speaks
     ensure_whisper_started()
 
@@ -147,8 +150,6 @@ def start_recording(audio_path: str = AUDIO_FILE) -> int:
 
     with open(PID_FILE, "w") as f:
         f.write(str(proc.pid))
-
-    notify_quickshell_ipc("listening")
 
     return proc.pid
 
@@ -253,6 +254,17 @@ def main():
     args = parser.parse_args()
     auto_stop = not args.no_idle_stop
 
+    if args.action in ("toggle", "start", "stop", "transcribe"):
+        try:
+            import fcntl
+            lock_fd = open("/tmp/jarvis_audio.lock", "w")
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except (BlockingIOError, OSError):
+            # Another process is already running a voice action right now
+            if args.json:
+                print(json.dumps({"status": "ignored", "reason": "concurrent_action"}))
+            sys.exit(0)
+
     def handle_dispatch(transcribed_text: str):
         if not args.dispatch or not transcribed_text:
             return None
@@ -335,6 +347,7 @@ def main():
         pid = get_recording_pid()
         if pid:
             # Currently recording -> stop and transcribe
+            notify_quickshell_ipc("transcribing")
             stop_recording(args.file)
             text = transcribe(args.file, args.server, args.language, auto_stop)
             dispatch_res = handle_dispatch(text)
@@ -348,6 +361,7 @@ def main():
                 print(text)
         else:
             # Not recording -> start recording
+            notify_quickshell_ipc("listening")
             new_pid = start_recording(args.file)
             if args.json:
                 print(json.dumps({"status": "recording", "pid": new_pid}))

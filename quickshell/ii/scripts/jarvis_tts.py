@@ -13,9 +13,16 @@ import argparse
 
 DEFAULT_VOICE = os.path.expanduser("~/.local/share/piper-voices/es_ES-davefx-medium.onnx")
 PIPER_BIN = "/usr/bin/piper-tts"
+DEFAULT_VOLUME = float(os.environ.get("JARVIS_TTS_VOLUME", "0.25"))
 
 
-def speak(text: str, voice: str = DEFAULT_VOICE, output_wav: str = None, speed: float = 1.0) -> bool:
+def speak(
+    text: str,
+    voice: str = DEFAULT_VOICE,
+    output_wav: str = None,
+    speed: float = 1.0,
+    volume: float = DEFAULT_VOLUME,
+) -> bool:
     if not text or not text.strip():
         return False
 
@@ -57,6 +64,15 @@ def speak(text: str, voice: str = DEFAULT_VOICE, output_wav: str = None, speed: 
         print("Error: neither pw-play nor paplay found for playback", file=sys.stderr)
         return False
 
+    clamped_vol = max(0.0, min(1.0, volume))
+    if player_bin.endswith("pw-play"):
+        player_cmd = [player_bin, "--volume", f"{clamped_vol:.2f}", "-"]
+    elif player_bin.endswith("paplay"):
+        pa_vol = int(clamped_vol * 65536)
+        player_cmd = [player_bin, f"--volume={pa_vol}", "-"]
+    else:
+        player_cmd = [player_bin, "-"]
+
     try:
         piper_proc = subprocess.Popen(
             piper_cmd,
@@ -65,7 +81,7 @@ def speak(text: str, voice: str = DEFAULT_VOICE, output_wav: str = None, speed: 
             stderr=subprocess.PIPE
         )
         player_proc = subprocess.Popen(
-            [player_bin, "-"],
+            player_cmd,
             stdin=piper_proc.stdout,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE
@@ -87,6 +103,7 @@ def main():
     parser.add_argument("-v", "--voice", default=DEFAULT_VOICE, help="Path to piper ONNX model")
     parser.add_argument("-o", "--output", default=None, help="Save to WAV file instead of playing")
     parser.add_argument("-s", "--speed", type=float, default=1.0, help="Speech speed multiplier (default: 1.0)")
+    parser.add_argument("--volume", type=float, default=DEFAULT_VOLUME, help="Speech volume (0.0 to 1.0, default: 0.25)")
 
     args = parser.parse_args()
 
@@ -98,7 +115,7 @@ def main():
     if not text:
         sys.exit(0)
 
-    success = speak(text, voice=args.voice, output_wav=args.output, speed=args.speed)
+    success = speak(text, voice=args.voice, output_wav=args.output, speed=args.speed, volume=args.volume)
     sys.exit(0 if success else 1)
 
 

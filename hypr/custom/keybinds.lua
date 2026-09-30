@@ -14,8 +14,8 @@ hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd("bash " .. HOME .. "/.config/quicks
 hl.bind("CTRL + ALT + R", hl.dsp.exec_cmd("bash " .. HOME .. "/.config/quickshell/ii/scripts/videos/record.sh --fullscreen"), { locked = true })
 hl.bind("CTRL + ALT + r", hl.dsp.exec_cmd("bash " .. HOME .. "/.config/quickshell/ii/scripts/videos/record.sh --fullscreen"), { locked = true })
 
--- Jarvis Voice Assistant & Dictation toggle (Super + Alt + J)
-hl.bind("SUPER + ALT + J", hl.dsp.exec_cmd("python3 " .. HOME .. "/.config/quickshell/ii/scripts/jarvis_audio.py --dispatch"), { locked = true, description = "Voice: Jarvis toggle recording and dispatch" })
+-- Jarvis Voice Assistant & Dictation toggle (Super + Shift + Space)
+hl.bind("SUPER + SHIFT + Space", hl.dsp.exec_cmd("python3 " .. HOME .. "/.config/quickshell/ii/scripts/jarvis_audio.py --dispatch"), { locked = true, description = "Voice: Jarvis toggle recording and dispatch" })
 
 -- Rename workspace: Dynamic Island modal con Win+R
 hl.bind("SUPER + R", hl.dsp.global("quickshell:workspaceRenameToggle"), { description = "Workspace: Rename active (Dynamic Island)" })

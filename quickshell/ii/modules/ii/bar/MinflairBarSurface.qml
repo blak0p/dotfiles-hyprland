@@ -157,7 +157,7 @@ Scope {
                         y: surface.barMarginTop
 
                         onCurrentModeChanged: {
-                            if (currentMode === "launcher" || currentMode === "dashboard" || currentMode === "workspaceRename") {
+                            if (currentMode === "launcher" || currentMode === "dashboard" || currentMode === "workspaceRename" || currentMode === "ai") {
                                 GlobalFocusGrab.addDismissable(popupSurface);
                             } else {
                                 GlobalFocusGrab.removeDismissable(popupSurface);
@@ -168,7 +168,7 @@ Scope {
                     Connections {
                         target: GlobalFocusGrab
                         function onDismissed() {
-                            if (AppState.activePopup === "launcher" || AppState.activePopup === "dashboard" || AppState.activePopup === "workspaceRename") {
+                            if (AppState.activePopup === "launcher" || AppState.activePopup === "dashboard" || AppState.activePopup === "workspaceRename" || AppState.activePopup === "ai") {
                                 AppState.activePopup = "";
                             }
                         }
@@ -251,32 +251,6 @@ Scope {
         }
         function clipboardToggle(): void {
             AppState.togglePopup("launcher");
-        }
-    }
-
-    IpcHandler {
-        target: "ai"
-
-        function toggle(): void {
-            if (AppState.activePopup === "ai") {
-                IslandAiService.clearSession();
-                AppState.activePopup = "";
-            } else {
-                AppState.openPopup("ai");
-            }
-        }
-        function open(): void {
-            AppState.openPopup("ai");
-        }
-        function ask(query: string): void {
-            AppState.activePopup = "ai";
-            IslandAiService.ask(query);
-        }
-        function close(): void {
-            if (AppState.activePopup === "ai") {
-                IslandAiService.clearSession();
-                AppState.activePopup = "";
-            }
         }
     }
 
@@ -392,6 +366,37 @@ Scope {
 
         function idle(): void {
             JarvisService.setIdle();
+        }
+    }
+
+    IpcHandler {
+        target: "ai"
+
+        function ask(prompt: string): void {
+            JarvisService.setIdle();
+            AppState.openPopup("ai");
+            IslandAiService.ask(prompt);
+        }
+
+        function askWithVoice(prompt: string): void {
+            JarvisService.setIdle();
+            AppState.openPopup("ai");
+            IslandAiService.speakVoice = true;
+            IslandAiService.ask(prompt);
+        }
+
+        function close(): void {
+            JarvisService.setIdle();
+            IslandAiService.clearSession();
+            AppState.activePopup = "";
+        }
+
+        function toggle(): void {
+            if (AppState.activePopup === "ai") {
+                close();
+            } else {
+                AppState.openPopup("ai");
+            }
         }
     }
 }
