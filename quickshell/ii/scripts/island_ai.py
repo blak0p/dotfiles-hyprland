@@ -76,8 +76,9 @@ def ensure_llama_server_running(timeout: float = 5.0) -> bool:
 
 
 SYSTEM_PROMPT = """You are a lightning-fast, concise desktop assistant embedded in a Hyprland Linux Dynamic Island.
-You have access to tools for live web search, local filesystem inspection, launching desktop applications, controlling Spotify playback, and checking remaining AI model usage quotas across connected providers.
+You have access to tools for live web search, local filesystem inspection, listing installed applications and games (list_desktop_apps), launching applications (launch_app), controlling Spotify playback, and checking AI model usage quotas.
 IMPORTANT: Detect the user's language and ALWAYS answer in the exact same language (e.g., Spanish if asked in Spanish).
+When launching an app or game, if the user's request is ambiguous (e.g. asking for 'Zelda' or 'Mario' when multiple options exist), do NOT guess or launch one arbitrarily: use list_desktop_apps or launch_app to find matching options, and ask the user which specific one they want to open.
 Keep your answers direct, crisp, and formatted in clean markdown without fluff or pleasantries, as the display area is a compact floating card.
 Do not repeat or quote raw tool outputs; summarize the answer cleanly."""
 
@@ -121,6 +122,22 @@ TOOLS = [
                     "path": {"type": "string", "description": "Path to the directory."}
                 },
                 "required": ["path"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_desktop_apps",
+            "description": "Lists installed desktop applications, games, and .desktop entries. Can optionally filter by keyword, category, or title (e.g. 'mario', 'zelda', 'game', 'emulator'). Use this to see what apps/games exist or to resolve ambiguity.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filter": {
+                        "type": "string",
+                        "description": "Optional keyword or category to filter by (e.g. 'mario', 'zelda', 'game', or null for all)."
+                    }
+                }
             }
         }
     },
@@ -195,6 +212,7 @@ def normalize_text(text: str) -> str:
 DESKTOP_DIRS = [
     "/usr/share/applications",
     os.path.expanduser("~/.local/share/applications"),
+    os.path.expanduser("~/Escritorio"),
     "/var/lib/flatpak/exports/share/applications",
     os.path.expanduser("~/.local/share/flatpak/exports/share/applications"),
     "/usr/local/share/applications",
@@ -297,6 +315,49 @@ def scan_desktop_applications():
                 apps[entry] = parsed
     return list(apps.values())
 
+def perform_list_desktop_apps(filter_query: str = None) -> str:
+    emit({"type": "tool_start", "name": "list_desktop_apps", "args": {"filter": filter_query}})
+    apps = scan_desktop_applications()
+    if not apps:
+        res = "No desktop applications found."
+        emit({"type": "tool_done", "name": "list_desktop_apps", "preview": res})
+        return res
+
+    norm_filter = normalize_text(filter_query) if filter_query else ""
+    matches = []
+    for app in apps:
+        if norm_filter:
+            haystack = f"{normalize_text(app['name'])} {normalize_text(app.get('generic_name', ''))} {normalize_text(app.get('comment', ''))} {normalize_text(app.get('keywords', ''))} {normalize_text(app.get('categories', ''))} {normalize_text(app['file'])}"
+            if norm_filter not in haystack:
+                continue
+        matches.append(app)
+
+    if not matches:
+        res = f"No desktop applications found matching '{filter_query}'."
+        emit({"type": "tool_done", "name": "list_desktop_apps", "preview": res})
+        return res
+
+    # Deduplicate and sort by name
+    unique_matches = {}
+    for a in sorted(matches, key=lambda x: x["name"].lower()):
+        if a["name"].lower() not in unique_matches:
+            unique_matches[a["name"].lower()] = a
+
+    lines = []
+    for a in list(unique_matches.values())[:30]:
+        desc = a.get("comment") or a.get("generic_name") or ""
+        if desc:
+            lines.append(f"- **{a['name']}** (`{a['file']}`): {desc}")
+        else:
+            lines.append(f"- **{a['name']}** (`{a['file']}`)")
+
+    if len(unique_matches) > 30:
+        lines.append(f"... and {len(unique_matches) - 30} more applications.")
+
+    res = "\n".join(lines)
+    emit({"type": "tool_done", "name": "list_desktop_apps", "preview": f"Found {len(unique_matches)} apps"})
+    return res
+
 def perform_launch_app(app_name: str) -> str:
     emit({"type": "tool_start", "name": "launch_app", "args": {"app_name": app_name}})
     if not app_name or not app_name.strip():
@@ -311,42 +372,77 @@ def perform_launch_app(app_name: str) -> str:
         emit({"type": "tool_done", "name": "launch_app", "preview": res})
         return res
 
-    best_app = None
-    best_score = -1.0
+    # 1. Exact match check (full name or desktop filename without extension)
+    exact_matches = [
+        app for app in apps
+        if norm_target in (normalize_text(app["name"]), normalize_text(os.path.splitext(app["file"])[0]))
+    ]
+    if len(exact_matches) == 1:
+        best_app = exact_matches[0]
+    else:
+        candidates = []
+        for app in apps:
+            score = 0.0
+            norm_name = normalize_text(app["name"])
+            norm_file = normalize_text(os.path.splitext(app["file"])[0])
+            norm_exec_bin = normalize_text(app["exec"].split()[0] if app["exec"] else "")
+            norm_generic = normalize_text(app.get("generic_name", ""))
+            norm_keywords = normalize_text(app.get("keywords", ""))
 
-    for app in apps:
-        score = 0.0
-        norm_name = normalize_text(app["name"])
-        norm_file = normalize_text(os.path.splitext(app["file"])[0])
-        norm_exec_bin = normalize_text(app["exec"].split()[0] if app["exec"] else "")
-        norm_generic = normalize_text(app.get("generic_name", ""))
-        norm_keywords = normalize_text(app.get("keywords", ""))
+            target_words = norm_target.split()
+            all_words_in_name = all(w in norm_name for w in target_words)
 
-        if norm_target in (norm_name, norm_file, norm_exec_bin):
-            score = 100.0
-        elif norm_target in norm_generic:
-            score = 90.0
-        elif norm_target in norm_name:
-            score = 80.0 + (len(norm_target) / max(len(norm_name), 1)) * 10
-        elif norm_name in norm_target:
-            score = 75.0
-        elif norm_target in norm_keywords:
-            score = 70.0
-        elif norm_target in norm_exec_bin:
-            score = 60.0
+            if norm_target in (norm_name, norm_file, norm_exec_bin):
+                score = 100.0
+            elif all_words_in_name:
+                score = 85.0
+            elif norm_target in norm_generic:
+                score = 80.0
+            elif norm_target in norm_name:
+                score = 75.0
+            elif norm_name in norm_target:
+                score = 70.0
+            elif norm_target in norm_keywords:
+                score = 65.0
+            elif norm_target in norm_exec_bin:
+                score = 60.0
+            else:
+                sim = max(
+                    difflib.SequenceMatcher(None, norm_target, norm_name).ratio(),
+                    difflib.SequenceMatcher(None, norm_target, norm_file).ratio(),
+                )
+                if sim >= 0.6:
+                    score = sim * 55.0
+
+            if score >= 70.0:
+                candidates.append((score, app))
+
+        # Check for ambiguity: multiple unique application names with high scores
+        unique_candidates = {}
+        for score, app in sorted(candidates, key=lambda x: x[0], reverse=True):
+            if app["name"] not in unique_candidates:
+                unique_candidates[app["name"]] = (score, app)
+
+        if len(unique_candidates) > 1:
+            top_name, (top_score, top_app) = next(iter(unique_candidates.items()))
+            second_name, (second_score, second_app) = list(unique_candidates.items())[1]
+
+            # Ambiguity occurs when top two are close or both contain search query
+            if (top_score - second_score) <= 15.0 or (norm_target in normalize_text(top_name) and norm_target in normalize_text(second_name)):
+                matching_names = [f"'{name}'" for name in list(unique_candidates.keys())[:5]]
+                res = (
+                    f"Ambiguous application request: Found multiple applications matching '{app_name}': {', '.join(matching_names)}. "
+                    f"Do not launch any app yet. Ask the user which specific application they would like to launch."
+                )
+                emit({"type": "tool_done", "name": "launch_app", "preview": res})
+                return res
+
+        if unique_candidates:
+            best_app = next(iter(unique_candidates.values()))[1]
         else:
-            sim = max(
-                difflib.SequenceMatcher(None, norm_target, norm_name).ratio(),
-                difflib.SequenceMatcher(None, norm_target, norm_file).ratio(),
-            )
-            if sim >= 0.6:
-                score = sim * 55.0
+            best_app = None
 
-        if score > best_score:
-            best_score = score
-            best_app = app
-
-    if not best_app or best_score < 30.0:
+    if not best_app:
         res = f"Could not find any installed application matching '{app_name}'."
         emit({"type": "tool_done", "name": "launch_app", "preview": res})
         return res
@@ -751,6 +847,8 @@ def main():
                 res_str = perform_read_file(func_args.get("path", ""))
             elif func_name == "list_dir":
                 res_str = perform_list_dir(func_args.get("path", ""))
+            elif func_name == "list_desktop_apps":
+                res_str = perform_list_desktop_apps(func_args.get("filter", None))
             elif func_name == "launch_app":
                 res_str = perform_launch_app(func_args.get("app_name", ""))
             elif func_name == "spotify_control":

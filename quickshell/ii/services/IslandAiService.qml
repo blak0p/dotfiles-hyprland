@@ -100,6 +100,8 @@ Singleton {
                             root.status = Translation.tr("Reading: %1").arg(root.toolDetail);
                         } else if (ev.name === "list_dir") {
                             root.status = Translation.tr("Listing: %1").arg(root.toolDetail);
+                        } else if (ev.name === "list_desktop_apps") {
+                            root.status = Translation.tr("Listing applications: %1").arg(root.toolDetail || "all");
                         } else {
                             root.status = Translation.tr("Running: %1").arg(ev.name);
                         }

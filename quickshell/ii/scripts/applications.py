@@ -27,6 +27,8 @@ APPLICATION_DIRS = [
     os.path.join(directory, "applications")
     for directory in [XDG_DATA_HOME, *XDG_DATA_DIRS.split(":")]
     if directory
+] + [
+    os.path.expanduser("~/Escritorio"),
 ]
 
 
